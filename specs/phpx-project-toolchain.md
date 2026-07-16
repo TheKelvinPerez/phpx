@@ -1,14 +1,16 @@
-# PHPX: WordPress First PHP Toolchain
+# PHPX: Laravel First PHP Toolchain
 
 ## Document Status
 
 **Working product name:** PHPX
 
-**Status:** Draft, Go architecture selected, ready for structured refinement
+**Status:** Draft, Go architecture and Laravel primary target selected, product necessity validation required before implementation
 
 **Created:** July 15, 2026
 
-**Document purpose:** Define a WordPress first, Composer compatible, Go based PHP toolchain that can install and select PHP runtimes, run many local sites without one container stack per site, synchronize project environments, execute isolated tools, and provide local development services through one command line interface.
+**Last revised:** July 16, 2026
+
+**Document purpose:** Define a Laravel first, Composer compatible, Go based PHP toolchain that can install and select PHP runtimes, synchronize Laravel environments, run many local applications without one container stack per project, execute isolated tools, and provide local development services through one command line interface.
 
 The name PHPX is provisional. Public naming, package namespace availability, domain availability, and trademark review remain open decisions.
 
@@ -16,38 +18,38 @@ The name PHPX is provisional. Public naming, package namespace availability, dom
 
 ### 1.1 Goal
 
-Create one fast, dependable command line tool that can take a WordPress or PHP project from source checkout to a working local development environment. The first product wedge is a lean native alternative to DDEV for developers who manage many WordPress sites. Composer remains the canonical PHP package manager whenever a project uses Composer.
+Create one fast, dependable command line tool that can take a Laravel project from source checkout to a working local development environment. The first product wedge is a lean, open, native Laravel environment that unifies the useful parts of Herd, Valet, Sail, DDEV, PHP version managers, Composer setup, and local service orchestration. Composer remains the canonical PHP package manager.
 
 ### 1.2 Product Promise
 
-From a clean machine, a WordPress developer should eventually be able to run:
+From a clean machine, a Laravel developer should eventually be able to run:
 
 ```bash
-git clone git@github.com:company/wordpress-site.git
-cd wordpress-site
+git clone git@github.com:company/laravel-app.git
+cd laravel-app
 phpx up
 ```
 
 PHPX should then:
 
-1. Detect a classic WordPress, Bedrock, Composer based WordPress, Laravel, Symfony, or generic PHP project.
-2. Determine the required PHP version from project configuration, Composer metadata, or WordPress compatibility data.
+1. Detect a Laravel project, followed by classic WordPress, Bedrock, Composer based WordPress, Symfony, or generic PHP projects as those adapters become available.
+2. Determine the required PHP version from project configuration and Composer metadata.
 3. Install the correct PHP runtime when necessary.
-4. Enable the PHP extensions expected by WordPress and any explicit project requirements.
+4. Enable the PHP extensions required by Composer and the supported Laravel baseline.
 5. Install missing dynamic extensions through a compatible extension provider.
-6. Install and invoke WP CLI and Composer when needed.
-7. Run `composer install` without altering Composer semantics when Composer metadata is present.
-8. Allocate a project database inside a shared native database service by default.
+6. Install Composer when needed and invoke the project supplied Artisan command through the selected runtime.
+7. Run `composer install` without altering Composer semantics.
+8. Prepare a reviewable local environment, allocate a database when requested, and preserve existing project secrets.
 9. Start demand driven PHP workers without creating a dedicated container stack.
 10. Serve the project through a local domain with trusted TLS.
-11. Start only the additional services and processes declared by the project.
+11. Start only the database, cache, queue, scheduler, mail, log, and asset processes declared by the project or selected development profile.
 12. Report one clear success state or one actionable failure state.
 
 ### 1.3 Problem Statement
 
-Modern PHP package management is standardized around Composer, but WordPress development environments remain fragmented and frequently depend on a container stack for each site. DDEV provides a strong and familiar experience, but its architecture normally creates one web container and one database container per running project. On macOS, container file sharing can also require a synchronization layer to recover acceptable filesystem performance.
+Modern PHP package management is standardized around Composer, but Laravel development environments are split across Herd, Valet, Sail, DDEV, system package managers, database applications, and project specific shell instructions. Native tools are fast but can drift across machines. Container tools are reproducible but often create a web and service stack for every running project. On macOS, container file sharing may also add latency or require a synchronization layer.
 
-That architecture becomes expensive for a WordPress developer responsible for dozens of client sites. A representative workload for PHPX is approximately 50 registered sites with 10 to 15 sites available during an active workday. The current pain is severe machine slowdown even on an Apple Silicon workstation with 64 GB of memory.
+The original scale problem remains a hard product constraint even though Laravel is now the primary market. PHPX must support approximately 50 registered PHP projects with 10 to 15 applications addressable during an active workday. A local environment should not become slow merely because many known projects are registered or several routes remain available on an Apple Silicon workstation.
 
 Developers often need separate tools or manual instructions for:
 
@@ -58,11 +60,11 @@ Developers often need separate tools or manual instructions for:
 5. Managing Composer itself.
 6. Isolating global PHP tools.
 7. Running local domains and TLS.
-8. Starting databases, queues, caches, mail capture, and asset processes.
-9. Importing, exporting, snapshotting, and restoring WordPress databases.
-10. Running WP CLI against the correct site and runtime.
-11. Supporting classic WordPress, Bedrock, and WordPress multisite layouts.
-12. Keeping dozens of known sites available without dozens of persistent web and database stacks.
+8. Preparing Laravel environment files, application keys, databases, queues, caches, mail capture, logs, and asset processes without unsafe automatic mutation.
+9. Running Artisan through the correct PHP runtime and project environment.
+10. Choosing between SQLite, MariaDB, MySQL, and PostgreSQL without maintaining separate setup documents.
+11. Keeping dozens of known applications available without dozens of persistent web and database stacks.
+12. Matching local command line PHP, PHP FPM, Composer, Artisan, and continuous integration.
 13. Reproducing the same environment in continuous integration.
 14. Diagnosing differences between machines.
 
@@ -70,51 +72,100 @@ This fragmentation creates slow onboarding, environment drift, global dependency
 
 ### 1.4 Opportunity
 
-PHPX can become the compatibility focused control plane around the existing PHP ecosystem. Its first job is to deliver a leaner DDEV style experience for WordPress without making containers the default unit of isolation. It does not need to replace PHP, WordPress, WP CLI, Composer, PIE, PHPUnit, Pest, PHPStan, Rector, Mago, MariaDB, MySQL, PostgreSQL, Redis, or framework tooling. It needs to make those components installable, selectable, reproducible, and understandable through one coherent interface.
+PHPX can become the compatibility focused control plane around the existing PHP ecosystem. Its first job is to deliver a complete Laravel development environment without making containers the default unit of isolation. It does not need to replace PHP, Laravel, Artisan, Composer, PIE, PHPUnit, Pest, PHPStan, Rector, Mago, MariaDB, MySQL, PostgreSQL, Redis, or Node tooling. It needs to make those components installable, selectable, reproducible, and understandable through one coherent interface.
 
-The strongest initial value proposition is not merely faster Composer execution. It is the ability to keep a large WordPress portfolio locally available with a small shared native footprint, then reproduce each project environment from source and configuration.
+The strongest initial value proposition is not merely faster Composer execution. It is the ability to clone a Laravel application, resolve its PHP environment, install dependencies, prepare declared services, serve trusted HTTPS, and run its development processes through one reproducible contract with a small shared native footprint.
 
 ### 1.5 Target Users
 
-1. WordPress developers managing many client sites locally.
-2. WordPress agencies that need a repeatable team environment without one container stack per site.
-3. Classic WordPress, Bedrock, and Composer based WordPress teams.
-4. Laravel developers working across multiple applications and PHP versions.
-5. Symfony developers working across multiple applications and PHP versions.
-6. Framework neutral PHP developers and library maintainers.
-7. New PHP developers who do not yet have a configured local environment.
-8. Continuous integration maintainers who need deterministic PHP environments.
-9. Open source maintainers who want contributors productive with minimal setup.
+1. Laravel developers working across multiple applications and PHP versions.
+2. Laravel teams that need repeatable local and continuous integration environments.
+3. Laravel agencies and product teams that want native performance without machine specific setup drift.
+4. Open source Laravel package maintainers who need contributors productive with minimal setup.
+5. WordPress developers and agencies managing classic WordPress, Bedrock, and Composer based sites.
+6. Symfony developers working across multiple applications and PHP versions.
+7. Framework neutral PHP developers and library maintainers.
+8. New PHP developers who do not yet have a configured local environment.
+9. Continuous integration maintainers who need deterministic PHP environments.
 10. Teams replacing machine specific setup documents with executable project configuration.
 
 ### 1.6 Framework Priority
 
 Development and product validation must follow this order:
 
-1. WordPress.
-2. Laravel.
+1. Laravel.
+2. WordPress.
 3. Symfony.
 4. Generic PHP sites and libraries.
 
-WordPress is not merely another framework adapter. It is the first product market, the first local environment workflow, and the source of the initial resource efficiency requirements. The architecture must remain capable of supporting the remaining PHP ecosystem without forcing WordPress assumptions into the core runtime manager.
+Laravel is the first product market, the first complete application adapter, and the standard that defines the initial developer experience. The architecture must remain capable of supporting the remaining PHP ecosystem without forcing Laravel assumptions into the core runtime, artifact, proxy, service, or process managers.
 
 ### 1.7 Founding Scale Requirement
 
 PHPX must be designed around the following real workload:
 
-1. At least 50 registered WordPress projects on one machine.
-2. At least 15 sites available concurrently without 15 web containers and 15 database containers.
+1. At least 50 registered PHP projects on one machine.
+2. At least 15 Laravel applications available concurrently without 15 web containers and 15 database containers.
 3. One shared router, one shared local certificate authority, and shared database engines where compatible.
-4. No dedicated process for a registered site that has not received traffic and has no declared background process.
+4. No dedicated process for a registered application that has not received traffic and has no declared background process.
 5. PHP workers created on demand and retired after an idle interval.
-6. Asset watchers, queue workers, cron runners, and similar processes started only when explicitly declared.
+6. Asset watchers, queue workers, scheduler workers, and similar processes started only when explicitly declared.
 7. Native host filesystem access with no duplicate project tree and no synchronization daemon required for normal macOS operation.
+
+### 1.8 Why PHPX Should Exist
+
+PHPX is not justified by a lack of PHP tools. The ecosystem already contains strong tools that solve most individual parts of local development:
+
+1. Composer manages PHP project dependencies and exposes PHP and extension constraints, but it does not install PHP runtimes, configure local HTTPS, or manage application services.
+2. Laravel Herd ships a native Laravel environment with PHP, Nginx, DNS, Composer, and Node.js. Herd Pro adds services and a committed `herd.yml` team configuration.
+3. Laravel Valet provides a very small native macOS web environment with parked directories, trusted domains, and PHP selection, but it intentionally does not provide the complete service environment of Sail.
+4. Laravel Sail provides a portable Docker based Laravel environment with PHP, Composer, Artisan, Node, databases, caches, mail, and optional services.
+5. DDEV provides mature project configuration, broad PHP application support, services, local routing, and database workflows through project scoped containers.
+6. PHP and general runtime managers can select language versions, but they do not understand Laravel application setup, services, routes, or process lifecycles.
+
+The possible gap is therefore not any single missing feature. The gap is the intersection of an open source, headless, reproducible environment contract and a lean native runtime model.
+
+PHPX should exist only to provide this distinct combination:
+
+1. One command line control plane that works without a graphical application or preinstalled PHP runtime.
+2. One committed environment declaration and exact artifact lock that can be enforced on developer machines and in continuous integration.
+3. Native host filesystem performance and shared services without one persistent application stack per project.
+4. Demand driven PHP FPM workers and explicit background processes so registered applications are cheap while idle.
+5. Composer and Artisan compatibility through direct execution rather than replacement or partial emulation.
+6. An open provider architecture for PHP runtimes, services, operating systems, and later application adapters.
+7. Clear explanations, artifact provenance, frozen mode, offline mode, and machine readable behavior suitable for teams and automation.
+8. An optional container compatibility path for applications whose infrastructure cannot be represented safely in native mode.
+
+PHPX is not a Composer replacement and should not be described as one. The useful comparison with uv is that PHPX manages the runtime and reproducible project environment around the established package manager. Composer remains the dependency authority.
+
+For a developer who only needs a polished Laravel environment on one Mac, Herd may already be the correct answer. For a team that prioritizes container isolation and service parity, Sail or DDEV may already be the correct answer. PHPX earns a place only if developers value the combined open, headless, deterministic, native, and resource efficient contract enough to switch or contribute.
+
+### 1.9 Necessity Test and Stop Conditions
+
+Milestone 0 is a product validation gate, not automatic permission to build the entire roadmap. Before the public MVP expands, PHPX must prove:
+
+1. At least fifteen independent Laravel developers or five Laravel teams report a repeated problem that is not adequately solved by their current Herd, Valet, Sail, DDEV, or runtime manager workflow.
+2. The same `phpx.toml` and `phpx.lock` can prepare a supported macOS environment and validate the project in Linux continuous integration without separate setup logic.
+3. A clean clone reaches a working Laravel route and test command with fewer undocumented machine assumptions than the comparison workflows.
+4. A measured 10 and 15 application workload uses materially fewer persistent processes and less memory than equivalent project scoped container stacks.
+5. Exact runtime and service artifact resolution provides team value beyond the version declarations already available in `herd.yml`, Sail Compose files, or DDEV configuration.
+6. PHPX can preserve Composer and Artisan behavior instead of creating ecosystem incompatibility.
+7. Runtime and service artifacts can be sourced, verified, licensed, updated, and removed safely on every claimed platform.
+
+The project should stop, narrow its scope, or contribute to an existing tool when any of the following becomes true:
+
+1. The product reduces to a free reimplementation of Herd without a stronger headless, automation, or reproducibility contract.
+2. Developers do not value exact environment locking or shared native services enough to change their workflow.
+3. Benchmarks show no material resource or startup improvement over the environments PHPX intends to replace.
+4. Secure runtime distribution cannot be sustained without depending on opaque or unreliable artifacts.
+5. Native service sharing causes more compatibility, security, or support problems than it solves.
+6. An existing open project can satisfy the validated requirements more effectively through contribution than a new ecosystem tool can through competition.
 
 ## 2. Product Principles
 
-### 2.1 WordPress First, Ecosystem Compatible
+### 2.1 Laravel First, Ecosystem Compatible
 
-Classic WordPress projects without `composer.json` must work as first class projects. Bedrock and other Composer based WordPress projects must receive the full Composer integration. Laravel, Symfony, and generic PHP support must build on the same runtime, artifact, service, and process foundations.
+Current Laravel applications must work as first class projects with Composer, Artisan, supported database drivers, trusted local HTTPS, and explicit development process orchestration. WordPress, Symfony, and generic PHP support must build on the same runtime, artifact, service, and process foundations.
 
 ### 2.2 Composer Remains Canonical When Present
 
@@ -124,19 +175,19 @@ PHPX must never create a parallel PHP package ecosystem or require projects to m
 
 ### 2.3 Existing Projects Work Without Migration
 
-A WordPress or Composer project should receive useful PHPX behavior without restructuring its source tree. Optional PHPX configuration should unlock stronger reproducibility, local serving, services, and process orchestration.
+A Laravel or Composer project should receive useful PHPX behavior without restructuring its source tree. Optional PHPX configuration should unlock stronger reproducibility, local serving, services, and process orchestration.
 
 ### 2.4 Projects Remain Usable Without PHPX
 
-Removing PHPX from a machine must not make the project structurally unusable. A developer with a compatible PHP installation, web server, database, WP CLI, and Composer when applicable must still be able to use the normal project workflow.
+Removing PHPX from a machine must not make the project structurally unusable. A developer with a compatible PHP installation, Composer, web server, database, and required project services must still be able to use normal Laravel and Composer workflows.
 
 ### 2.5 Native by Default, Containers by Exception
 
-The default WordPress path must use native PHP, native filesystem access, shared native database services, and a shared proxy. Containers may be supported as an optional compatibility backend for projects that genuinely require operating system isolation or custom infrastructure.
+The default Laravel path must use native PHP, native filesystem access, shared native services, and a shared proxy. Containers may be supported as an optional compatibility backend for projects that genuinely require operating system isolation or custom infrastructure.
 
 ### 2.6 Shared Services, Isolated Project Data
 
-Compatible WordPress projects should share one MariaDB or MySQL server process while receiving separate databases, users, credentials, import history, and backups. A project may request a dedicated service instance when version or isolation requirements demand it.
+Compatible projects should share a MariaDB, MySQL, PostgreSQL, Redis, or mail service process while receiving separate databases, users, credentials, namespaces, and backup histories where the upstream service supports those boundaries. A project may request a dedicated service instance when version or isolation requirements demand it.
 
 ### 2.7 Compatibility Before Native Replacement
 
@@ -158,7 +209,7 @@ PHPX must coexist with system PHP, Homebrew PHP, Herd, Valet, Docker, Mise, and 
 
 ### 2.11 Framework Neutral Core
 
-The core must understand PHP runtimes, artifacts, services, and executable project environments independently of any framework. WordPress receives the first and deepest application adapter. Laravel, Symfony, and generic PHP adapters follow without duplicating the core lifecycle.
+The core must understand PHP runtimes, artifacts, services, and executable project environments independently of any framework. Laravel receives the first and deepest application adapter. WordPress, Symfony, and generic PHP adapters follow without duplicating the core lifecycle.
 
 ### 2.12 Portfolio Scale Is a Core Feature
 
@@ -191,11 +242,11 @@ PHPX must be able to explain why it selected a PHP version, extension provider, 
 2. Runtime artifact verification.
 3. PHP configuration overlays.
 4. Extension installation coordination.
-5. WordPress project detection and local environment adaptation.
-6. WP CLI acquisition and runtime selection.
-7. Composer acquisition and runtime selection.
-8. Shared database engine lifecycle and project database isolation.
-9. WordPress database import, export, snapshot, and restore coordination.
+5. Laravel project detection, environment planning, and Artisan execution through the selected runtime.
+6. Composer acquisition and runtime selection.
+7. Shared database, cache, and mail service lifecycle with project data isolation.
+8. Database import, export, snapshot, and restore coordination.
+9. WordPress project detection and WP CLI acquisition when the WordPress adapter is installed.
 10. Environment synchronization.
 11. Isolated tool environments.
 12. Command execution within the selected environment.
@@ -209,8 +260,8 @@ PHPX must be able to explain why it selected a PHP version, extension provider, 
 ### 3.3 External Components Retain Their Responsibilities
 
 1. PHP executes PHP applications.
-2. WordPress core, plugins, and themes retain their normal application behavior.
-3. WP CLI performs WordPress administration commands.
+2. Laravel and project supplied Artisan commands retain their normal application behavior.
+3. WordPress core, plugins, themes, and WP CLI retain their normal behavior when the WordPress adapter is installed.
 4. PIE resolves and builds supported dynamic PHP extensions.
 5. Mago may provide formatting, linting, and static analysis integrations.
 6. Existing tools such as PHPUnit, Pest, PHPStan, and Rector continue to execute as their own packages.
@@ -221,9 +272,9 @@ PHPX must be able to explain why it selected a PHP version, extension provider, 
 
 PHPX enters an ecosystem with several valuable adjacent projects.
 
-### 4.1 DDEV
+### 4.1 Laravel Herd and Laravel Valet
 
-DDEV is the primary experience benchmark and the clearest architectural contrast. DDEV uses one web container and one database container per running project, plus shared router and SSH agent containers. On macOS and Windows, DDEV commonly uses Mutagen to work around container filesystem performance limitations. PHPX should preserve DDEV strengths such as project configuration, local URLs, database import and export, WP CLI integration, web server choice, and broad PHP version support while replacing the default per project container topology with shared native processes.
+Herd and Valet are the primary Laravel experience benchmarks. They establish familiar concepts such as parked directories, linked applications, trusted local domains, PHP isolation, and native service management. PHPX should preserve the speed and low friction of that experience while adding an open, headless, team reproducible environment contract.
 
 ### 4.2 Composer
 
@@ -237,9 +288,9 @@ PIE is the official PHP extension installer and the successor to PECL. PHPX shou
 
 Mago provides Rust based formatting, linting, and static analysis. Because PHPX uses Go, managed executable integration is preferred over linking to internal Mago libraries. PHPX should not recreate those capabilities.
 
-### 4.5 Laravel Valet and Laravel Herd
+### 4.5 Laravel Sail and DDEV
 
-Valet and Herd establish familiar concepts such as parked directories, linked sites, trusted local domains, PHP isolation, and service management. PHPX should preserve the best parts of that user experience while remaining framework neutral and headless.
+Sail and DDEV are the primary reproducibility and resource comparison points. Their container based environments provide important service isolation and team consistency, but a project stack can carry persistent web, database, cache, and supporting processes. PHPX should preserve declarative configuration, local URLs, database workflows, service versions, and predictable onboarding while replacing the default per project container topology with shared native processes.
 
 ### 4.6 Yerd
 
@@ -255,17 +306,17 @@ Libretto explores Composer compatible package installation in Rust. Its compatib
 
 ## 5. User Personas
 
-### 5.1 WordPress Portfolio Developer
+### 5.1 Laravel Application Developer
 
-Maintains approximately 50 client sites and may need 10 to 15 available during a workday. Wants instant local URLs, correct PHP versions, databases, WP CLI, mail capture, and imports without keeping a container pair alive for every site.
+Works across Laravel applications with different PHP versions, databases, queues, caches, mail, and frontend processes. Wants one command to reach a correct local environment without globally relinking PHP or keeping a container stack alive for every application.
 
-### 5.2 WordPress Agency Maintainer
+### 5.2 Laravel Team Maintainer
 
-Needs repeatable configuration for classic WordPress, Bedrock, and multisite projects across a team. Needs fast onboarding, database and upload workflows, and predictable local domains.
+Needs a reviewable environment contract for a Laravel team. Wants new contributors, local machines, and continuous integration to agree on PHP, Composer, extensions, services, URLs, and development processes.
 
-### 5.3 Application Developer
+### 5.3 WordPress Portfolio Developer
 
-Works on several PHP applications with different runtime and extension requirements. Needs automatic project switching without changing the global system runtime.
+Maintains many classic WordPress, Bedrock, or Composer based sites. Needs the same lean shared infrastructure after the Laravel adapter establishes the core.
 
 ### 5.4 New Contributor
 
@@ -289,56 +340,56 @@ Wants framework aware conveniences without making the underlying tool exclusive 
 
 ## 6. Core User Journeys
 
-### 6.1 Existing WordPress Site on a Clean Machine
+### 6.1 Existing Laravel Application on a Clean Machine
 
 ```text
-Clone or copy WordPress site
+Clone a Laravel application
     ↓
 Run phpx init or phpx up
     ↓
-PHPX detects classic WordPress, Bedrock, or Composer based WordPress
+PHPX detects Laravel from Composer metadata, Artisan, bootstrap files, and the public front controller
     ↓
-PHPX installs a compatible runtime, WP CLI, and Composer when present
+PHPX installs a compatible PHP runtime and Composer
     ↓
 PHPX installs or validates extensions
     ↓
-PHPX creates an isolated database and imports a configured dump when present
+PHPX proposes a safe local environment plan and allocates configured services
     ↓
 PHPX registers the local domain and trusted TLS
     ↓
-Developer opens the site or runs phpx wp
+Developer opens the application or runs phpx artisan
 ```
 
-### 6.2 WordPress Portfolio Workday
+### 6.2 Laravel Portfolio Workday
 
 ```text
-PHPX knows 50 registered sites
+PHPX knows 50 registered PHP projects
     ↓
-Developer opens or requests 15 sites during the day
+Developer opens or requests 15 Laravel applications during the day
     ↓
 One shared proxy routes every domain
     ↓
-Compatible sites use one shared database engine with isolated databases
+Compatible applications reuse shared database, cache, and mail services with isolated project data
     ↓
 PHP FPM workers start on request and retire after idle timeout
     ↓
-Sites remain addressable without 15 persistent container stacks
+Applications remain addressable without 15 persistent container stacks
 ```
 
-### 6.3 DDEV Project Import
+### 6.3 Preparing the Laravel Environment
 
 ```text
-Developer enters a project containing .ddev/config.yaml
+Developer enters a Laravel project with .env.example and no local .env
     ↓
-Run phpx import ddev
+Run phpx init
     ↓
-PHPX maps project type, document root, PHP version, database engine, hostnames, and upload directories
+PHPX inspects Composer, Artisan, environment examples, database configuration, and declared processes
     ↓
-PHPX reports custom containers, add ons, and hooks that cannot be mapped
+PHPX proposes runtime, service, local URL, and environment changes without exposing secrets
     ↓
 Developer reviews and writes phpx.toml
     ↓
-Original .ddev configuration remains untouched
+PHPX creates only the approved local state and leaves existing environment files intact
 ```
 
 ### 6.4 Switching Between Projects
@@ -357,16 +408,16 @@ Run the same command
 PHPX selects managed PHP 8.5 without global relinking
 ```
 
-### 6.5 Running WP CLI
+### 6.5 Running Artisan
 
 ```text
-Run phpx wp plugin status
+Run phpx artisan migrate:status
     ↓
-PHPX selects the site PHP runtime and project database environment
+PHPX selects the application PHP runtime and project environment
     ↓
-PHPX invokes a managed WP CLI version at the detected WordPress path
+PHPX invokes the project supplied Artisan command
     ↓
-The command operates on the intended site without a container shell
+The command operates on the intended application and database without a container shell
 ```
 
 ### 6.6 Running an Isolated Tool
@@ -392,7 +443,7 @@ PHPX synchronizes runtime and dependencies
     ↓
 PHPX starts or reuses compatible shared services
     ↓
-PHPX starts PHP FPM and declared processes
+PHPX starts PHP FPM and declared queue, scheduler, log, mail, and asset processes
     ↓
 PHPX routes the configured local domain
     ↓
@@ -410,74 +461,76 @@ PHPX restores verified artifacts from cache when available
     ↓
 PHPX fails if committed locks would change
     ↓
-Run phpx run composer test
+Run phpx run php artisan test
 ```
 
 ## 7. Success Criteria
 
 ### 7.1 Technical Proof Criteria
 
-* [ ] A macOS arm64 machine with no usable PHP, Composer, WP CLI, web server, or local database can run a classic WordPress site through PHPX.
+* [ ] A macOS arm64 machine with no usable PHP, Composer, web server, or local database can run a current Laravel fixture through PHPX.
 * [ ] PHPX installs a managed PHP runtime without changing the system PHP installation.
-* [ ] PHPX installs and invokes WP CLI through the managed runtime.
-* [ ] PHPX installs and invokes Composer through the managed runtime for a Bedrock fixture.
-* [ ] A classic WordPress fixture loads through trusted local HTTPS and can access its database.
-* [ ] A Bedrock fixture loads through trusted local HTTPS and can access its database.
-* [ ] WordPress permalinks work through the default server adapter.
-* [ ] Database import and export round trips preserve the technical proof fixture.
+* [ ] PHPX installs and invokes Composer through the managed runtime.
+* [ ] PHPX invokes the project supplied Artisan command through the managed runtime.
+* [ ] A current Laravel fixture loads through trusted local HTTPS and can access its configured database.
+* [ ] Laravel front controller routing works through the default server adapter.
+* [ ] A fresh fixture can prepare approved local environment values without overwriting an existing `.env` file or secret.
+* [ ] `php artisan migrate` and `php artisan test` complete through PHPX.
 * [ ] Repeating `phpx up` without project changes is idempotent.
 * [ ] Interrupted runtime downloads cannot leave an installation marked complete.
 * [ ] Every downloaded artifact is verified before execution.
 * [ ] `phpx doctor` reports enough information to diagnose the tested failure cases.
-* [ ] The architecture demonstrates 15 registered WordPress fixtures available through one shared proxy and one shared compatible database engine.
+* [ ] The architecture demonstrates 15 registered Laravel fixtures available through one shared proxy and one shared compatible database engine.
 
-### 7.2 WordPress Public MVP Criteria
+### 7.2 Laravel Public MVP Criteria
 
 * [ ] macOS arm64 is supported and benchmarked on Apple Silicon.
-* [ ] Classic WordPress, Bedrock, and Composer based WordPress projects are supported.
-* [ ] PHP version selection honors PHPX configuration, `.php-version`, Composer requirements when present, and detected WordPress compatibility.
+* [ ] The Laravel versions declared by the support policy are covered by end to end fixtures.
+* [ ] PHP version selection honors PHPX configuration, `.php-version`, and Composer requirements.
 * [ ] PHPX manages supported PHP branches and exact locked patch versions.
 * [ ] Required built in extensions are detected and validated.
 * [ ] Supported dynamic extensions can be installed through PIE.
-* [ ] WP CLI runs against the detected WordPress root with the selected PHP runtime and database environment.
+* [ ] `phpx artisan` runs against the detected application with the selected PHP runtime and project environment.
 * [ ] Composer plugins and scripts behave exactly as they do through direct Composer invocation.
 * [ ] Isolated Composer tool execution works without modifying the project.
 * [ ] `phpx.lock` can be committed and enforced with frozen mode.
-* [ ] Local sites resolve through configured `.test` domains and trusted TLS.
-* [ ] One shared MariaDB or MySQL engine can host isolated databases and users for compatible projects.
+* [ ] Local applications resolve through configured `.test` domains and trusted TLS.
+* [ ] SQLite works without a server process, and at least one shared SQL engine can host isolated databases and users for compatible projects.
 * [ ] Database create, import, export, snapshot, restore, and remove operations are available.
-* [ ] A shared mail capture service can receive mail from multiple sites while preserving site identity.
-* [ ] Standard single site WordPress rewrites and permalinks work without Apache or Nginx.
-* [ ] Custom `.htaccess` behavior is detected and either mapped, warned about, or routed through an explicit compatibility backend.
-* [ ] Common DDEV WordPress configuration can be imported without modifying `.ddev` files.
+* [ ] A shared Redis provider is available for projects that explicitly request cache, session, or queue support.
+* [ ] A shared mail capture service can receive mail from multiple applications while preserving project identity.
+* [ ] Laravel front controller routing and public static assets work without Apache or Nginx.
+* [ ] Environment preparation, application key generation, and local service credentials require reviewable rules and never overwrite existing secrets silently.
+* [ ] Queue workers, the scheduler, log viewing, and asset processes start only through explicit configuration or a selected development profile.
 * [ ] Commands required by local automation and continuous integration support noninteractive execution.
+* [ ] A Linux x86_64 continuous integration fixture can enforce the same committed PHPX lock for runtime, Composer, Artisan, and test commands without claiming full Linux local environment support.
 * [ ] Machine readable output is available for status, resolution, and diagnostics.
 * [ ] The project publishes clear security, support, and artifact provenance policies.
-* [ ] Fifty sites can remain registered without one persistent process, container, or database engine per site.
-* [ ] Fifteen sites can remain addressable concurrently without 15 web containers and 15 database containers.
-* [ ] A published benchmark compares PHPX and DDEV on the same WordPress portfolio workload.
+* [ ] Fifty projects can remain registered without one persistent process, container, or database engine per project.
+* [ ] Fifteen Laravel applications can remain addressable concurrently without 15 web containers and 15 database containers.
+* [ ] A published benchmark compares PHPX with Herd or Valet and with a container workflow such as Sail or DDEV on equivalent Laravel fixtures.
 
 ### 7.3 Portfolio Performance Criteria
 
-* [ ] Registering an idle site adds no dedicated long running process.
-* [ ] An idle site has no PHP worker after the configured idle timeout.
-* [ ] Compatible WordPress sites reuse a shared database engine rather than creating one engine per site.
-* [ ] All sites reuse one proxy, one DNS integration, one local certificate authority, and one mail capture service.
-* [ ] WordPress code executes directly from the host filesystem with no duplicate synchronized project tree.
-* [ ] Opening an idle registered site creates required PHP workers automatically.
+* [ ] Registering an idle application adds no dedicated long running process.
+* [ ] An idle application has no PHP worker after the configured idle timeout.
+* [ ] Compatible Laravel applications reuse shared services rather than creating one engine process per project.
+* [ ] All applications reuse one proxy, one DNS integration, one local certificate authority, and one mail capture service.
+* [ ] Laravel code executes directly from the host filesystem with no duplicate synchronized project tree.
+* [ ] Opening an idle registered application creates required PHP workers automatically.
 * [ ] Closing the browser does not keep unnecessary PHP workers alive indefinitely.
 * [ ] PHP command line and web requests use the same project PHP version.
 * [ ] Local service ports never collide silently.
-* [ ] `phpx status` accurately reports every registered site, active worker, managed service, and endpoint.
+* [ ] `phpx status` accurately reports every registered application, active worker, managed service, and endpoint.
 * [ ] The benchmark records idle memory, active memory, process count, time to first response, steady response time, and disk use.
 
 ### 7.4 Adoption Criteria
 
-* [ ] Existing WordPress projects can try PHPX without restructuring the WordPress installation.
+* [ ] Existing Laravel projects can try PHPX without restructuring the application.
 * [ ] Existing Composer projects can try PHPX without converting dependency files.
-* [ ] A common DDEV WordPress project can generate a reviewable PHPX configuration through one import command.
+* [ ] A common Laravel project can generate a reviewable PHPX configuration through `phpx init`.
 * [ ] A project can stop using PHPX without reversing package metadata changes.
-* [ ] Setup documentation for a representative WordPress site can be reduced to installation, import or initialization, and one startup command.
+* [ ] Setup documentation for a representative Laravel application can be reduced to PHPX installation, initialization, and one startup command.
 * [ ] The compatibility policy and fallback behavior are documented and tested.
 
 ## 8. Scope Boundaries
@@ -486,54 +539,54 @@ Run phpx run composer test
 
 1. macOS arm64.
 2. Go command line application.
-3. Classic WordPress and Bedrock project discovery.
-4. WordPress and Composer PHP requirement resolution.
+3. Current Laravel project discovery.
+4. Composer PHP requirement resolution.
 5. Managed PHP installation from a vetted artifact source.
-6. Managed WP CLI installation.
-7. Managed Composer installation for Composer based projects.
+6. Managed Composer installation.
+7. Managed Artisan execution from the project.
 8. Shared Go proxy and trusted local TLS.
-9. Shared MariaDB or MySQL engine with isolated project databases.
+9. SQLite plus one shared SQL engine with isolated project databases.
 10. Demand driven PHP FPM pools.
-11. `init`, `up`, `down`, `status`, `wp`, `sync`, `run`, `composer`, `db`, and `doctor` commands.
+11. `init`, `up`, `down`, `status`, `artisan`, `sync`, `run`, `composer`, `db`, and `doctor` commands.
 12. Artifact checksums and atomic installs.
-13. Classic WordPress and Bedrock fixtures.
-14. A 15 site scale fixture derived from the representative portfolio workload.
+13. Current Laravel application fixtures.
+14. A 15 application scale fixture derived from the founding portfolio resource constraint.
 
 ### 8.2 Public MVP Scope
 
-1. macOS arm64.
-2. Classic WordPress, Bedrock, and Composer based WordPress.
-3. Project configuration and environment lock files.
-4. PHP runtime lifecycle management.
-5. Managed WP CLI and Composer.
-6. Shared proxy, DNS integration, TLS, database, and mail capture.
-7. Demand driven PHP FPM.
-8. Standard WordPress rewrite behavior.
-9. Standard extension validation.
-10. PIE integration for a documented supported set.
-11. WordPress database and upload directory workflows.
-12. Common DDEV configuration import.
-13. Isolated PHP tools.
-14. Continuous integration support for package and tool commands.
-15. Shared artifact cache.
-16. Stable human and machine readable output.
-17. Signed releases and a documented update path.
-18. Published portfolio resource benchmarks.
+1. macOS arm64 for the complete local environment.
+2. Linux x86_64 with glibc for frozen synchronization and Laravel test commands in continuous integration.
+3. Supported Laravel application versions.
+4. Project configuration and environment lock files.
+5. PHP runtime lifecycle management.
+6. Managed Composer and project supplied Artisan execution.
+7. Shared proxy, DNS integration, TLS, SQL database, Redis, and mail capture providers.
+8. Demand driven PHP FPM.
+9. Laravel front controller and public asset behavior.
+10. Standard extension validation.
+11. PIE integration for a documented supported set.
+12. Laravel environment preparation and database workflows.
+13. Explicit queue, scheduler, log, mail, and frontend process profiles.
+14. Isolated PHP tools.
+15. Continuous integration support for package, Artisan, and tool commands.
+16. Shared artifact cache.
+17. Stable human and machine readable output.
+18. Signed releases and a documented update path.
+19. Published Laravel resource and workflow benchmarks.
 
 ### 8.3 Later Scope
 
 1. Additional operating systems and architectures.
-2. Laravel adapter.
+2. WordPress adapter for classic WordPress, Bedrock, and Composer based WordPress.
 3. Symfony adapter.
 4. Generic PHP site adapter.
-5. WordPress multisite with subdirectory and subdomain modes.
-6. Native Apache compatibility mode for projects dependent on custom `.htaccess` behavior.
-7. Broader DDEV add on and hook migration.
-8. Additional native service providers.
-9. Project process graphs beyond the WordPress essentials.
-10. Graphical clients.
-11. Native locked Composer installation acceleration.
-12. Shared remote caches and enterprise mirrors.
+5. Laravel Sail and DDEV migration assistance beyond basic discovery and coexistence.
+6. Additional native service providers and dedicated service modes.
+7. Managed JavaScript runtime acquisition if research proves it belongs inside PHPX.
+8. WordPress multisite and Apache compatibility after the WordPress adapter ships.
+9. Graphical clients.
+10. Native locked Composer installation acceleration.
+11. Shared remote caches and enterprise mirrors.
 
 ### 8.4 Explicitly Out of Scope
 
@@ -547,9 +600,9 @@ Run phpx run composer test
 8. Modifying operating system PHP installations without explicit user action.
 9. Requiring a graphical interface.
 10. Silently executing privileged operations.
-11. Full compatibility with arbitrary Docker Compose overrides in the public MVP.
-12. Parsing and emulating every possible Apache `.htaccess` directive in the Go proxy.
-13. Starting Node, asset watchers, cron loops, or queue workers for every registered site by default.
+11. Full compatibility with arbitrary Sail, DDEV, or Docker Compose overrides in the public MVP.
+12. Replacing the selected JavaScript package manager or runtime during the first public MVP.
+13. Starting Node, asset watchers, scheduler loops, or queue workers for every registered project by default.
 
 ## 9. Functional Requirements
 
@@ -557,7 +610,7 @@ Run phpx run composer test
 
 **FR 1.1:** PHPX must discover the current project from the current working directory or an explicit path.
 
-**FR 1.2:** Discovery must recognize `phpx.toml`, `phpx.lock`, `composer.json`, `composer.lock`, `.php-version`, `.ddev/config.yaml`, `wp-config.php`, `wp-load.php`, `wp-settings.php`, `wp-content`, Bedrock structure, and the repository root.
+**FR 1.2:** Discovery must recognize `phpx.toml`, `phpx.lock`, `composer.json`, `composer.lock`, `.php-version`, `artisan`, `bootstrap/app.php`, `public/index.php`, Laravel package metadata, common Sail files, `.ddev/config.yaml`, and the repository root.
 
 **FR 1.3:** Directory traversal must stop at the selected project boundary and must not accidentally inherit configuration from an unrelated parent project.
 
@@ -567,15 +620,15 @@ Run phpx run composer test
 
 **FR 1.6:** PHPX must expose the discovered project root through `phpx status` and machine readable output.
 
-**FR 1.7:** PHPX must distinguish the repository root, PHP working directory, web document root, WordPress root, WordPress content directory, and upload directory.
+**FR 1.7:** PHPX must distinguish the repository root, Laravel application root, PHP working directory, public document root, storage directory, and writable bootstrap cache directory.
 
-**FR 1.8:** PHPX must detect classic WordPress and Bedrock without executing project supplied PHP during discovery.
+**FR 1.8:** PHPX must detect Laravel without executing project supplied PHP during discovery.
 
-**FR 1.9:** PHPX must read the installed WordPress core version from source metadata without booting WordPress.
+**FR 1.9:** PHPX must determine the installed Laravel framework version from Composer metadata without booting the application.
 
-**FR 1.10:** A WordPress plugin or theme repository without a complete WordPress installation must be identified as an extension project rather than incorrectly served as a site.
+**FR 1.10:** A Laravel package repository without a complete application must be identified as a library project rather than incorrectly served as an application.
 
-**FR 1.11:** Parked directory discovery must avoid descending into `vendor`, `node_modules`, `.git`, upload archives, backups, and known generated directories.
+**FR 1.11:** Parked directory discovery must avoid descending into `vendor`, `node_modules`, `.git`, `storage`, backups, and known generated directories.
 
 **FR 1.12:** The detected project type and supporting evidence must be available through `phpx explain project`.
 
@@ -597,11 +650,11 @@ Run phpx run composer test
 
 **FR 2.8:** PHPX may update to a newer patch within an allowed branch only when lock and command policy allow it.
 
-**FR 2.9:** For WordPress without Composer metadata, PHPX must combine explicit project configuration, detected WordPress core compatibility, current PHP support status, and the PHPX recommended default.
+**FR 2.9:** Laravel automatic detection must require credible Composer or source evidence. A manually selected Laravel adapter must not invent a framework or PHP version when that evidence is absent.
 
-**FR 2.10:** WordPress compatibility and PHP security support must be reported separately. Compatibility with an end of life PHP version must never be presented as a security recommendation.
+**FR 2.10:** Laravel compatibility and PHP security support must be reported separately. Compatibility with an end of life PHP version must never be presented as a security recommendation.
 
-**FR 2.11:** PHPX must not infer plugin and theme compatibility with a newer PHP version when reliable metadata is unavailable.
+**FR 2.11:** PHPX must not infer application or package compatibility with a newer PHP version when Composer constraints and reliable metadata are unavailable.
 
 **FR 2.12:** Legacy PHP selection must require an explicit project request or explicit command confirmation and must persist a visible warning state.
 
@@ -627,9 +680,9 @@ Run phpx run composer test
 
 **FR 3.10:** PHPX must expose the exact selected executable and loaded configuration files.
 
-**FR 3.11:** WordPress public MVP runtime artifacts must contain the PHP extensions in the documented WordPress baseline or report an unsupported baseline before serving the site.
+**FR 3.11:** Laravel public MVP runtime artifacts must contain the PHP extensions in the documented Laravel baseline or report an unsupported baseline before serving the application.
 
-**FR 3.12:** Legacy WordPress runtimes may be installable for client maintenance, but PHPX must distinguish installability from active security support.
+**FR 3.12:** Legacy project runtimes may be installable for maintenance, but PHPX must distinguish installability from active security support.
 
 ### 9.4 Composer Management
 
@@ -657,7 +710,7 @@ Run phpx run composer test
 
 **FR 5.1:** `phpx sync` must produce and display a deterministic execution plan.
 
-**FR 5.2:** The plan must resolve the project adapter, runtime, runtime configuration, extensions, WP CLI, Composer when present, isolated tools required by configuration, database allocation, local site registration, and package installation action.
+**FR 5.2:** The plan must resolve the project adapter, runtime, runtime configuration, extensions, Composer, Artisan path, isolated tools required by configuration, database allocation, local route registration, declared services, declared processes, and package installation action.
 
 **FR 5.3:** `phpx sync` must use `composer install` when `composer.lock` exists.
 
@@ -675,15 +728,15 @@ Run phpx run composer test
 
 **FR 5.10:** PHPX must distinguish resolution, download, installation, Composer, script, and validation failures.
 
-**FR 5.11:** A classic WordPress project without Composer must synchronize successfully without creating Composer files.
+**FR 5.11:** A Laravel project must synchronize through its existing Composer metadata without creating a second dependency manifest or changing constraints implicitly.
 
-**FR 5.12:** `phpx up` must synchronize prerequisites before exposing the local route, but it must not update WordPress core, plugins, themes, or Composer packages implicitly.
+**FR 5.12:** `phpx up` must synchronize prerequisites before exposing the local route, but it must not update Laravel, project packages, database schema, or application code implicitly.
 
 ### 9.6 Extension Management
 
 **FR 6.1:** PHPX must distinguish built in PHP extensions from separately installed dynamic extensions.
 
-**FR 6.2:** PHPX must infer required extension names from Composer platform requirements and a versioned WordPress extension baseline.
+**FR 6.2:** PHPX must infer required extension names from Composer platform requirements and a versioned Laravel extension baseline.
 
 **FR 6.3:** A broad runtime artifact may contain common built in extensions while project configuration controls which optional extensions are enabled.
 
@@ -701,9 +754,9 @@ Run phpx run composer test
 
 **FR 6.10:** Compiling an extension must display required native build dependencies before requesting privileged installation.
 
-**FR 6.11:** The WordPress baseline must distinguish required, recommended, and optional extensions.
+**FR 6.11:** The Laravel baseline must distinguish required, recommended, and optional extensions.
 
-**FR 6.12:** Site Health and PHPX diagnostics should agree on loaded extension visibility wherever WordPress exposes equivalent checks.
+**FR 6.12:** PHPX diagnostics and Laravel runtime inspection should agree on loaded extension visibility wherever the framework exposes equivalent checks.
 
 ### 9.7 Isolated Tool Management
 
@@ -723,7 +776,25 @@ Run phpx run composer test
 
 **FR 7.8:** Project installed binaries in `vendor/bin` must take precedence when the user explicitly requests the project tool.
 
-### 9.7.1 WordPress and WP CLI
+### 9.7.1 Laravel and Artisan
+
+**FR 7L.1:** PHPX must detect the project supplied `artisan` executable and must never download or substitute a different Artisan implementation.
+
+**FR 7L.2:** `phpx artisan <arguments>` must execute Artisan with the selected PHP runtime, application root, local URL, and project service environment.
+
+**FR 7L.3:** PHPX must preserve Artisan arguments, exit codes, standard streams, interactive prompts, signal behavior, and framework bootstrap behavior.
+
+**FR 7L.4:** `phpx artisan` must fail clearly when discovery identifies a Laravel package rather than a complete application.
+
+**FR 7L.5:** PHPX must not run migrations, seeders, key generation, storage linking, cache clearing, or other mutating Artisan commands implicitly during ordinary synchronization.
+
+**FR 7L.6:** PHPX may offer named, reviewable setup actions that invoke standard Artisan commands after explicit approval.
+
+**FR 7L.7:** Queue, scheduler, Reverb, Horizon, Octane, and similar framework processes must be represented as explicit project process declarations or supported profiles.
+
+**FR 7L.8:** Laravel version support must be defined by tested application fixtures and published support policy, not only by package constraint resolution.
+
+### 9.7.2 WordPress and WP CLI
 
 **FR 7W.1:** PHPX must install a verified managed WP CLI release.
 
@@ -745,7 +816,7 @@ Run phpx run composer test
 
 **FR 8.1:** `phpx run <command>` must execute inside the resolved project environment.
 
-**FR 8.2:** The child path must place the selected PHP runtime, selected WP CLI and Composer executables, PHPX tool shims, and `vendor/bin` in documented order.
+**FR 8.2:** The child path must place the selected PHP runtime, Composer executable, project `vendor/bin`, and PHPX tool shims in documented order. Adapter specific tools such as WP CLI may extend that path when installed.
 
 **FR 8.3:** The child process must inherit the terminal, working directory, environment, signals, and exit status unless explicitly overridden.
 
@@ -773,17 +844,19 @@ Run phpx run composer test
 
 **FR 9.8:** `phpx init` must inspect the project and propose configuration before writing it.
 
-**FR 9.9:** WordPress database credentials generated by PHPX must live in uncommitted local state or an operating system credential store.
+**FR 9.9:** Laravel database and service credentials generated by PHPX must live in uncommitted local state or an operating system credential store.
 
-**FR 9.10:** PHPX must support Bedrock environment files without committing local secrets.
+**FR 9.10:** PHPX must understand Laravel `.env` and `.env.example` conventions without committing local secrets.
 
-**FR 9.11:** For classic WordPress, PHPX must offer reviewable local configuration strategies and must not silently rewrite `wp-config.php`.
+**FR 9.11:** PHPX must never overwrite an existing Laravel `.env` file or replace an existing `APP_KEY` silently.
 
-**FR 9.12:** A generated `wp-config-phpx.php` integration file must be local, clearly marked, and included only after explicit approval or an existing project convention allows it.
+**FR 9.12:** PHPX may inject local values through the supervised process environment or write an approved local environment file, but the chosen strategy must be visible through `phpx explain environment`.
+
+**FR 9.13:** Copying `.env.example`, generating `APP_KEY`, or changing `APP_URL` and service variables must require an explicit setup plan and must preserve a recoverable record of approved local changes.
 
 ### 9.10 Local Site Management
 
-**FR 10.1:** The local server layer must support WordPress document roots first, followed by Laravel, Symfony, and generic PHP adapters.
+**FR 10.1:** The local server layer must support Laravel public document roots first, followed by WordPress, Symfony, and generic PHP adapters.
 
 **FR 10.2:** Each site must use its selected PHP version for both command line and web execution.
 
@@ -805,31 +878,31 @@ Run phpx run composer test
 
 **FR 10.11:** One PHP FPM master may serve multiple site pools using the same PHP runtime version.
 
-**FR 10.12:** WordPress site pools must use the FPM `ondemand` process manager so idle pools can have zero child workers.
+**FR 10.12:** Laravel application pools must use the FPM `ondemand` process manager so idle pools can have zero child workers.
 
 **FR 10.13:** PHPX must enforce a configurable global PHP worker limit and a configurable per site worker limit.
 
 **FR 10.14:** An idle timeout must retire unused PHP workers without unregistering the site route.
 
-**FR 10.15:** Standard WordPress front controller rewrites, static assets, uploads, and pretty permalinks must work through the default proxy adapter.
+**FR 10.15:** Laravel front controller routing, public static assets, and ordinary streamed responses must work through the default proxy adapter.
 
-**FR 10.16:** PHPX must inspect `.htaccess` and report directives outside the supported WordPress rewrite subset.
+**FR 10.16:** The proxy must prevent accidental static exposure of `.env`, storage internals, source files, and other paths outside the selected public document root.
 
-**FR 10.17:** Projects that depend on arbitrary Apache behavior must be able to select a documented compatibility backend when one becomes available.
+**FR 10.17:** Projects that depend on custom Nginx, Apache, Octane, or container behavior must receive a blocking compatibility explanation or select a documented backend when available.
 
 **FR 10.18:** The shared proxy must wake or route an idle registered site without requiring a manual start command for ordinary web requests.
 
-**FR 10.19:** WordPress multisite subdomain mode must be able to register wildcard local DNS and certificates before it is declared supported.
+**FR 10.19:** Applications that explicitly request wildcard subdomains must be able to register matching local DNS and certificates before that behavior is declared supported.
 
 **FR 10.20:** Site routes must remain cheap registry entries when no PHP worker or project process is active.
 
 ### 9.11 Development Services
 
-**FR 11.1:** PHPX must manage upstream MariaDB or MySQL and mail capture for the WordPress public MVP. It may later manage PostgreSQL, Redis, search, storage, and additional engines.
+**FR 11.1:** PHPX must support SQLite, at least one upstream shared SQL engine, Redis, and mail capture for the Laravel public MVP. Additional SQL engines, search, storage, and specialized services may follow.
 
 **FR 11.2:** Every service must have an explicit version, data path, configuration path, port policy, and health check.
 
-**FR 11.3:** Compatible WordPress projects should share a database engine process while using separate databases, users, credentials, and backup histories.
+**FR 11.3:** Compatible Laravel projects should share a database or cache engine process while using separate databases, users, credentials, namespaces, and backup histories where supported.
 
 **FR 11.4:** Services must bind to loopback by default.
 
@@ -849,27 +922,27 @@ Run phpx run composer test
 
 **FR 11.12:** Redis and other optional services must not start merely because PHPX knows about a site.
 
-### 9.11.1 WordPress Database and File Workflows
+### 9.11.1 Laravel Database and Storage Workflows
 
-**FR 11W.1:** `phpx db create` must allocate a project database and least privilege project user in the selected shared engine.
+**FR 11L.1:** `phpx db create` must create a project SQLite database or allocate a project database and least privilege user in the selected shared engine.
 
-**FR 11W.2:** `phpx db import` must support common plain and compressed SQL dump formats.
+**FR 11L.2:** `phpx db import` must support common plain and compressed SQL dump formats for documented server engines.
 
-**FR 11W.3:** `phpx db export` must create a portable logical dump without stopping unrelated sites.
+**FR 11L.3:** `phpx db export` must create a portable logical dump without stopping unrelated applications.
 
-**FR 11W.4:** `phpx db snapshot` and `phpx db restore` must maintain project scoped local recovery points.
+**FR 11L.4:** `phpx db snapshot` and `phpx db restore` must maintain project scoped local recovery points.
 
-**FR 11W.5:** Database deletion must display the site, engine, database name, and backup state before confirmation.
+**FR 11L.5:** Database deletion must display the application, engine, database name, and backup state before confirmation.
 
-**FR 11W.6:** URL search and replace must be an explicit WP CLI backed operation and must not happen silently during import.
+**FR 11L.6:** Database migrations, seeders, pruning, and reset commands must be explicit Artisan operations and must not happen silently during import or synchronization.
 
-**FR 11W.7:** PHPX must support configurable WordPress upload directories for classic WordPress and Bedrock.
+**FR 11L.7:** PHPX must preserve Laravel storage paths and writable directory requirements without relocating project data silently.
 
-**FR 11W.8:** File import and export must preserve the source project tree unless the user chooses a managed external upload store.
+**FR 11L.8:** Creating the public storage link must be an explicit setup action and must use Laravel behavior.
 
-**FR 11W.9:** Database credentials must be unique per project by default.
+**FR 11L.9:** Database credentials must be unique per project by default.
 
-**FR 11W.10:** Project database isolation is an organizational and access boundary, not a substitute for hostile code isolation.
+**FR 11L.10:** Project database and Redis isolation are organizational and access boundaries, not substitutes for hostile code isolation.
 
 ### 9.12 Process Supervision
 
@@ -885,7 +958,7 @@ Run phpx run composer test
 
 **FR 12.6:** An optional user scoped daemon may retain local site and service state, but core package and runtime commands must not require it.
 
-**FR 12.7:** Registered sites must not automatically start asset watchers, Node processes, cron loops, or queue workers.
+**FR 12.7:** Registered applications must not automatically start asset watchers, Node processes, scheduler loops, queue workers, Horizon, Reverb, or Octane.
 
 **FR 12.8:** A global scheduler must cap total PHP workers across every site and report queueing caused by the cap.
 
@@ -893,7 +966,7 @@ Run phpx run composer test
 
 ### 9.13 Diagnostics
 
-**FR 13.1:** `phpx doctor` must inspect WordPress discovery, WordPress root, runtime selection, artifact integrity, PHP configuration, extensions, WP CLI, Composer when present, database access, rewrite compatibility, permissions, proxy state, DNS, TLS, services, ports, and process state as applicable.
+**FR 13.1:** `phpx doctor` must inspect Laravel discovery, framework and application roots, public document root, runtime selection, artifact integrity, PHP configuration, extensions, Composer, Artisan, environment readiness, writable paths, application key state, database access, proxy state, DNS, TLS, services, ports, and process state as applicable.
 
 **FR 13.2:** Every failed check must include evidence and a proposed next command.
 
@@ -937,11 +1010,11 @@ Run phpx run composer test
 
 **FR 16.4:** Diagnostic bundles must be locally reviewable before sharing.
 
-### 9.17 DDEV Import and Coexistence
+### 9.17 Existing Environment Import and Coexistence
 
-**FR 17.1:** `phpx import ddev` must read `.ddev/config.yaml` without modifying it.
+**FR 17.1:** PHPX import commands must inspect common Laravel Sail and DDEV project configuration without modifying it.
 
-**FR 17.2:** The importer must map project name, project type, document root, PHP version, database type and version, primary URL, additional hostnames, additional domains, upload directories, web server type, and common environment values where safe.
+**FR 17.2:** The importer must map project name, project type, document root, PHP version, database type and version, cache service, mail service, primary URL, additional hostnames, process commands, web server type, and common environment values where safe.
 
 **FR 17.3:** Custom Docker Compose files, custom images, add ons, hooks, web build files, and custom Nginx or Apache configuration must be inventoried and classified as mapped, ignored by choice, or unsupported.
 
@@ -949,11 +1022,11 @@ Run phpx run composer test
 
 **FR 17.5:** PHPX must generate a reviewable proposed `phpx.toml` before writing it.
 
-**FR 17.6:** An optional migration command may ask DDEV to export the project database and then import it into PHPX local state.
+**FR 17.6:** An optional migration command may ask the existing environment to export the project database and then import it into PHPX local state.
 
-**FR 17.7:** URL replacement from `.ddev.site` to `.test` must require explicit approval and use WP CLI aware replacement.
+**FR 17.7:** Changes from an existing local URL to a PHPX `.test` URL must require explicit approval and must not mutate application data automatically.
 
-**FR 17.8:** PHPX must not stop, delete, or alter the DDEV project until the user explicitly requests cleanup after validation.
+**FR 17.8:** PHPX must not stop, delete, or alter Sail, DDEV, or other existing project infrastructure until the user explicitly requests cleanup after validation.
 
 **FR 17.9:** A project may retain both configurations during migration.
 
@@ -975,19 +1048,19 @@ Run phpx run composer test
 
 **FR 18.8:** An idle registered site must consume registry data only, apart from resources shared globally or by runtime version.
 
-**FR 18.9:** Resource benchmarks must use the founding workload of 50 registered sites and 15 concurrently addressable WordPress sites.
+**FR 18.9:** Resource benchmarks must use the founding workload of 50 registered projects and 15 concurrently addressable Laravel applications.
 
 ### 9.19 Framework Rollout
 
-**FR 19.1:** WordPress requirements and fixtures must reach public MVP quality before Laravel becomes an official application adapter.
+**FR 19.1:** Laravel requirements and fixtures must reach public MVP quality before another application adapter becomes official.
 
-**FR 19.2:** Laravel support must reuse runtime, Composer, database, proxy, TLS, process, and diagnostics foundations.
+**FR 19.2:** WordPress support must reuse runtime, Composer, database, proxy, TLS, process, and diagnostics foundations while adding classic project discovery and WP CLI behavior.
 
-**FR 19.3:** Symfony support must follow Laravel and reuse the same foundations.
+**FR 19.3:** Symfony support must follow the Laravel public MVP and reuse the same foundations.
 
 **FR 19.4:** Generic PHP site support must allow an explicit document root and front controller without framework detection.
 
-**FR 19.5:** Adding later adapters must not weaken WordPress portfolio performance guarantees.
+**FR 19.5:** Adding later adapters must not weaken Laravel workflow correctness or portfolio performance guarantees.
 
 ## 10. Command Line Contract
 
@@ -995,7 +1068,6 @@ Run phpx run composer test
 
 ```text
 phpx init
-phpx import ddev
 phpx sync
 phpx up
 phpx down
@@ -1018,7 +1090,7 @@ phpx sites
 phpx site sleep
 phpx site wake
 
-phpx wp
+phpx artisan
 
 phpx db create
 phpx db import
@@ -1030,6 +1102,12 @@ phpx db remove
 
 phpx mail open
 phpx mail status
+
+phpx services up
+phpx services down
+phpx services status
+phpx services logs
+phpx services remove
 
 phpx php install
 phpx php pin
@@ -1062,13 +1140,12 @@ phpx self update
 ### 10.2 Later Command Surface
 
 ```text
-phpx services up
-phpx services down
-phpx services status
-phpx services logs
-phpx services remove
+phpx import sail
+phpx import ddev
 
-phpx adapter laravel
+phpx wp
+
+phpx adapter wordpress
 phpx adapter symfony
 phpx adapter generic
 
@@ -1101,22 +1178,22 @@ phpx ddev cleanup
 
 ## 11. Proposed Project Configuration
 
-The following example demonstrates the intended WordPress boundary. Composer requirements remain in `composer.json` when the project uses Composer. PHPX configuration describes the local and reproducible environment around WordPress and those package requirements.
+The following example demonstrates the intended Laravel boundary. Composer requirements remain in `composer.json`. PHPX configuration describes the local and reproducible environment around Laravel and those package requirements.
 
 ```toml
 schema = 1
 
 [project]
-type = "wordpress"
+type = "laravel"
 root = "."
-wordpress_root = "."
+document_root = "public"
 
 [php]
 version = "8.4"
 source = "managed"
 
-[wordpress]
-wp_cli = "2"
+[laravel]
+artisan = "artisan"
 
 [composer]
 version = "2"
@@ -1125,26 +1202,34 @@ version = "2"
 xdebug = "^3.4"
 
 [site]
-domain = "client-site.test"
+domain = "example-app.test"
 tls = true
-rewrite = "wordpress"
+front_controller = "public/index.php"
 
 [database]
 engine = "mariadb"
 version = "10.11"
 mode = "shared"
 
-[files]
-uploads = "wp-content/uploads"
-
 [workers]
 mode = "ondemand"
 max_children = 2
 idle_timeout = "10s"
 
+[processes.queue]
+command = "php artisan queue:listen --tries=1"
+autostart = false
+
+[processes.scheduler]
+command = "php artisan schedule:work"
+autostart = false
+
 [processes.assets]
 command = "pnpm dev"
 autostart = false
+
+[profiles.dev]
+processes = ["queue", "scheduler", "assets"]
 
 [tools]
 phpstan = "phpstan/phpstan:^2"
@@ -1155,9 +1240,9 @@ phpstan = "phpstan/phpstan:^2"
 1. `php.version` expresses an allowed request, not necessarily an exact patch.
 2. The resolved exact patch belongs in `phpx.lock`.
 3. Composer `require.php` must also allow the selected runtime when Composer metadata exists.
-4. Detected WordPress compatibility must allow the selected runtime.
+4. The supported Laravel and Composer compatibility ranges must allow the selected runtime.
 5. Composer `ext-*` requirements are inferred and must not need duplication.
-6. A versioned WordPress extension baseline is inferred without duplication.
+6. A versioned Laravel extension baseline is inferred without duplication.
 7. `extensions.dev` contains optional development extensions or explicit provider choices.
 8. Shared database mode shares the engine process, never the project database or credentials.
 9. Database credentials are generated into uncommitted local state.
@@ -1176,34 +1261,34 @@ For PHP runtime selection, PHPX should use the following precedence:
 2. The runtime request in `phpx.toml`.
 3. An existing `.php-version` file.
 4. The root PHP requirement in `composer.json` when present.
-5. The PHP compatibility range for the detected WordPress core version.
+5. The PHP compatibility range for the detected Laravel framework version when Composer metadata does not already provide an equivalent constraint.
 6. The latest PHP branch that is supported by PHP and compatible with the detected application.
 
-Higher precedence never permits violation of a lower level compatibility constraint. A pinned PHPX version that violates Composer or detected WordPress requirements must fail. PHPX must explain when WordPress remains compatible with a PHP branch that PHP itself no longer supports.
+Higher precedence never permits violation of a lower level compatibility constraint. A pinned PHPX version that violates Composer or detected Laravel requirements must fail. PHPX must explain when a Laravel application remains compatible with a PHP branch that PHP itself no longer supports.
 
 ### 12.2 Synchronization Steps
 
-1. Discover project files, application adapter, document root, WordPress root, and target platform.
+1. Discover project files, application adapter, application root, public document root, and target platform.
 2. Parse PHPX configuration and validate its schema.
-3. Read WordPress core metadata without executing project code.
-4. Parse Composer platform requirements when Composer metadata is present.
+3. Read Laravel and Composer metadata without executing project code.
+4. Parse Composer platform requirements.
 5. Load and validate the PHPX lock when present.
 6. Resolve a supported and application compatible PHP runtime.
 7. Resolve the runtime artifact and verify target compatibility.
 8. Resolve built in and dynamic extension requirements.
-9. Resolve WP CLI and Composer when required.
+9. Resolve Composer and the project supplied Artisan path.
 10. Resolve configured isolated tools.
 11. Resolve database engine allocation and project database identity.
-12. Resolve local domain, TLS, rewrite adapter, PHP FPM pool, and worker policy.
+12. Resolve local domain, TLS, front controller adapter, PHP FPM pool, and worker policy.
 13. Produce an immutable execution plan.
 14. Acquire per artifact and shared service locks.
 15. Download missing artifacts into temporary storage.
 16. Verify hashes, signatures, sizes, and manifests.
 17. Atomically install artifacts into the managed store.
 18. Generate project scoped PHP and PHP FPM configuration overlays.
-19. Execute `composer install` through the selected runtime when `composer.lock` exists.
-20. Execute Composer platform requirement validation when Composer metadata exists.
-21. Validate WP CLI bootstrap and database connectivity for WordPress.
+19. Execute `composer install` through the selected runtime according to lock and command policy.
+20. Execute Composer platform requirement validation.
+21. Validate Artisan discovery, writable paths, approved environment readiness, and configured database connectivity without running application migrations implicitly.
 22. Persist a new lock only when command policy allows changes.
 23. Report the selected environment and next useful commands.
 
@@ -1229,10 +1314,10 @@ Project Resolver
     ↓
 Environment Planner
     ├── Application Adapter Registry
-    ├── WordPress Adapter
+    ├── Laravel Adapter
     ├── PHP Runtime Manager
-    ├── WP CLI Adapter
     ├── Composer Adapter
+    ├── Artisan Runner
     ├── Extension Adapter
     ├── Database Allocator
     ├── Tool Manager
@@ -1241,7 +1326,7 @@ Environment Planner
     ↓
 Command Runner
 
-WordPress Local Control Plane
+Laravel Local Control Plane
     ├── User Daemon
     ├── Go HTTP and TLS Proxy
     ├── DNS Integration
@@ -1263,11 +1348,10 @@ internal/
     app/
     project/
     adapter/
-    wordpress/
+    laravel/
     constraints/
     runtime/
     artifact/
-    wpcli/
     composer/
     extension/
     tool/
@@ -1291,8 +1375,8 @@ The first release should prefer one `phpx` executable that can run normal comman
 ### 13.3 Dependency Direction
 
 1. Domain packages define shared types and errors without importing command line or daemon delivery packages.
-2. Project, adapter, WordPress, constraint, runtime, artifact, WP CLI, Composer, extension, database, and tool packages depend inward on narrow domain contracts.
-3. WordPress depends on stable adapter interfaces and must not place application assumptions inside runtime or artifact packages.
+2. Project, adapter, Laravel, constraint, runtime, artifact, Composer, extension, database, and tool packages depend inward on narrow domain contracts.
+3. Laravel depends on stable adapter interfaces and must not place application assumptions inside runtime or artifact packages.
 4. Proxy, database, scheduler, and service packages depend on runtime and process abstractions, not the command line parser.
 5. The `cmd/phpx` package composes capabilities but contains minimal business logic.
 6. The daemon exposes a versioned local protocol and uses the same core services as the CLI.
@@ -1361,24 +1445,24 @@ The project should recommend ignoring `.phpx/`. The committed `phpx.toml` and `p
 ### 13.6 Daemon Model
 
 1. Runtime installation, Composer execution, tool execution, and synchronization must work without a daemon.
-2. The WordPress local environment uses one user scoped daemon for persistent routes, PHP FPM pools, resource scheduling, and shared services.
+2. The Laravel local environment uses one user scoped daemon for persistent routes, PHP FPM pools, resource scheduling, and shared services.
 3. The daemon must never run as root.
 4. Privileged setup must be handled by a narrowly scoped helper or explicit operating system command.
 5. CLI and graphical clients must communicate with the daemon through a versioned authenticated local socket.
 
-### 13.7 WordPress Portfolio Process Topology
+### 13.7 Laravel Portfolio Process Topology
 
-The target topology for 50 registered sites is:
+The target topology for 50 registered projects is:
 
 ```text
 One PHPX user daemon
     ├── One Go HTTP and TLS proxy
     ├── One site registry and resource scheduler
     ├── One shared mail capture process
-    ├── One shared MariaDB 10.11 engine for compatible sites
+    ├── Shared versioned SQL and cache engines for compatible applications
     ├── Additional shared database engines only when required
     ├── One PHP FPM master for each active PHP version
-    │       ├── One configured pool per registered site using that version
+    │       ├── One configured pool per registered application using that version
     │       └── Zero child workers for each idle pool
     └── Optional project processes started only by declaration
 ```
@@ -1391,7 +1475,7 @@ PHP FPM pools are not a hostile code security boundary and may share an OPcache 
 
 1. A database engine process is keyed by engine type, engine version, target, and relevant configuration profile.
 2. Every project receives a separate database and database user.
-3. Project credentials are stored locally and injected through an approved WordPress configuration strategy.
+3. Project credentials are stored locally and injected through an approved Laravel environment strategy.
 4. Stopping or sleeping a site never stops a shared engine that serves another project.
 5. Removing a site registration never drops its database automatically.
 6. A database engine may stop only when no registered project depends on it or the user explicitly requests a global service stop.
@@ -1399,7 +1483,7 @@ PHP FPM pools are not a hostile code security boundary and may share an OPcache 
 
 ### 13.9 Native Filesystem Model
 
-PHPX executes WordPress directly from the host project path. It does not copy the project into a virtual machine or container volume and does not require a file synchronization daemon for ordinary operation. Upload directories remain normal host paths unless the project explicitly selects a managed external path.
+PHPX executes Laravel directly from the host project path. It does not copy the project into a virtual machine or container volume and does not require a file synchronization daemon for ordinary operation. Application storage remains on normal host paths unless the project explicitly selects a managed external path.
 
 This model removes the container bind mount and synchronization costs that can affect DDEV performance on macOS. It also means PHPX does not provide container level filesystem isolation by default.
 
@@ -1411,9 +1495,9 @@ This is not a goal to rewrite the PHP ecosystem in Go. PHP remains the applicati
 
 **Decision status:** Accepted on July 15, 2026.
 
-Go was selected because PHPX is primarily a web adjacent orchestration product. Its control plane coordinates HTTP, TLS, local sockets, downloads, files, databases, PHP FPM, and child processes. Go provides native distribution and strong concurrency while remaining close to the founding maintainer's web and backend experience. This improves the probability of reaching a useful WordPress release and sustaining the project afterward.
+Go was selected because PHPX is primarily a web adjacent orchestration product. Its control plane coordinates HTTP, TLS, local sockets, downloads, files, databases, PHP FPM, and child processes. Go provides native distribution and strong concurrency while remaining close to the founding maintainer's web and backend experience. This improves the probability of reaching a useful Laravel release and sustaining the project afterward.
 
-The product must not claim that Go is categorically faster than PHP or Rust. Go is expected to provide fast startup and efficient resident control plane behavior, but every performance claim remains subject to the published PHPX benchmarks. WordPress application execution remains PHP execution regardless of the control plane language.
+The product must not claim that Go is categorically faster than PHP or Rust. Go is expected to provide fast startup and efficient resident control plane behavior, but every performance claim remains subject to the published PHPX benchmarks. Laravel application execution remains PHP execution regardless of the control plane language.
 
 #### 13.10.1 Why the Control Plane Should Not Depend on PHP
 
@@ -1424,10 +1508,11 @@ A core written in PHP creates a circular dependency. A PHAR provides convenient 
 PHP is still the right language in several parts of the system:
 
 1. Composer remains the package operation authority.
-2. WP CLI remains the WordPress command authority.
-3. WordPress, Laravel, and Symfony continue to execute as PHP applications.
-4. Small framework probes may execute inside the selected PHP runtime when application boot behavior is the only reliable source of truth.
-5. Compatibility fixtures may be written in PHP to prove that PHPX preserves ecosystem behavior.
+2. Project supplied Artisan remains the Laravel command authority.
+3. WP CLI remains the WordPress command authority when that adapter is installed.
+4. Laravel, WordPress, and Symfony continue to execute as PHP applications.
+5. Small framework probes may execute inside the selected PHP runtime when application boot behavior is the only reliable source of truth.
+6. Compatibility fixtures may be written in PHP to prove that PHPX preserves ecosystem behavior.
 
 PHP could operate a long lived daemon through existing event loop and process libraries. The objection is not that PHP is incapable or always slow. The stronger objections are the bootstrap dependency, the need to bundle an interpreter, the resident runtime cost, and the weaker fit for a cross platform process and service supervisor that must remain available while PHP installations are being changed.
 
@@ -1437,7 +1522,7 @@ PHP could operate a long lived daemon through existing event loop and process li
 2. The standard library directly covers HTTP, TLS, sockets, archive formats, hashing, structured data, child processes, signals, filesystem access, testing, profiling, and cross platform primitives.
 3. Goroutines and channels fit concurrent proxy requests, downloads, process event streams, health checks, log routing, and bounded background work without requiring a complex asynchronous type system.
 4. The Go toolchain provides integrated formatting, testing, fuzzing, race detection, profiling, dependency management, and cross compilation.
-5. Garbage collection removes most manual memory lifetime management and lets the initial team focus on WordPress behavior, artifact safety, process cleanup, and user experience.
+5. Garbage collection removes most manual memory lifetime management and lets the initial team focus on Laravel behavior, artifact safety, process cleanup, and user experience.
 6. The small language and fast compiler reduce the time required to understand, review, build, and change the control plane.
 7. Go's common use in web services, command line tools, proxies, cloud infrastructure, and platform engineering makes PHPX concepts transferable to a broad contributor and maintainer audience.
 8. Direct compilation to macOS, Linux, and Windows targets is straightforward while the core avoids C dependencies.
@@ -1458,7 +1543,7 @@ Go also creates material costs:
 6. `cgo` complicates builds, cross compilation, distribution, and process isolation.
 7. Go binaries may be larger than equivalent carefully optimized native binaries because they include the runtime and standard library code they use.
 8. External modules create supply chain and maintenance risk even when the standard library covers much of the product.
-9. Go does not solve PHP binary distribution, database distribution, certificates, DNS, or WordPress compatibility by itself.
+9. Go does not solve PHP binary distribution, database distribution, certificates, DNS, or Laravel compatibility by itself.
 10. A poorly designed Go daemon can still leak memory, leak goroutines, deadlock, consume excessive CPU, corrupt state through logic errors, or expose insecure local interfaces.
 
 The team must account for these costs through resource budgets, profiling, cancellation rules, race testing, failure injection, dependency review, and narrow operating system providers.
@@ -1483,7 +1568,7 @@ Bun may be a good future choice for a graphical client, web interface, documenta
 
 Rust is the strongest alternative to Go for PHPX. It offers finer memory control, no garbage collector, stronger compile time protection against data races and invalid memory access, excellent C interoperability, and the possibility of lower idle memory.
 
-Rust is not selected for the initial implementation because most PHPX work is orchestration around HTTP, files, downloads, and processes rather than an embedded runtime, database engine, or latency critical data plane. The largest resource improvement comes from shared native services and demand driven PHP workers, not from removing the Go garbage collector. Go also aligns more closely with the founding maintainer's web background and offers a shorter path to a maintainable WordPress release.
+Rust is not selected for the initial implementation because most PHPX work is orchestration around HTTP, files, downloads, and processes rather than an embedded runtime, database engine, or latency critical data plane. The largest resource improvement comes from shared native services and demand driven PHP workers, not from removing the Go garbage collector. Go also aligns more closely with the founding maintainer's web background and offers a shorter path to a maintainable Laravel release.
 
 Mago, Yerd, and Libretto remain valuable adjacent Rust projects. PHPX should integrate through stable executable or language neutral interfaces instead of adopting a second implementation language. Rust may be reconsidered for an isolated component only when profiling proves that Go cannot meet a published resource, latency, security, or native integration requirement. The public MVP must not become a mixed Go and Rust codebase by default.
 
@@ -1493,7 +1578,7 @@ Zig has appealing properties for this product, including no garbage collector, s
 
 Swift would fit a macOS only product well, but PHPX intends to support Linux and eventually Windows. Java, Kotlin, C Sharp, and similar managed platforms provide mature libraries and productive development, but add a runtime and garbage collector to a tool whose central promise includes low idle overhead and simple bootstrap distribution.
 
-The comparison is therefore not Go against every language in the abstract. It is which language best satisfies native bootstrap, acceptable resident cost, practical concurrency, cross platform system control, contributor sustainability, and time to a reliable WordPress release.
+The comparison is therefore not Go against every language in the abstract. It is which language best satisfies native bootstrap, acceptable resident cost, practical concurrency, cross platform system control, contributor sustainability, and time to a reliable Laravel release.
 
 #### 13.10.8 Why Go Is the Right First Implementation
 
@@ -1502,7 +1587,7 @@ Go is selected through a product tradeoff rather than a claim that it wins every
 1. PHPX is a web adjacent control plane, not a new PHP interpreter or operating system service manager for hostile multiuser workloads.
 2. The product needs HTTP, TLS, process management, downloads, files, concurrency, and cross platform releases more than manual memory control.
 3. Shared services, native filesystem access, and demand driven PHP FPM workers produce the primary resource savings.
-4. A smaller language and fast build loop improve the chance that a small team ships and maintains the complete WordPress workflow.
+4. A smaller language and fast build loop improve the chance that a small team ships and maintains the complete Laravel workflow.
 5. Go expands the contributor and maintainer path into backend, platform, cloud, and infrastructure engineering while remaining approachable from PHP.
 6. Rust remains available later if measured evidence identifies an isolated problem that Go cannot solve within the resource budget.
 
@@ -1511,7 +1596,7 @@ Go is not selected merely because it is native or commonly used for infrastructu
 #### 13.10.9 Language Boundary Rules
 
 1. Do not reimplement Composer in the Go core.
-2. Do not reimplement WP CLI commands in the Go core.
+2. Do not reimplement Artisan or framework commands in the Go core.
 3. Keep framework specific application execution inside the selected PHP runtime.
 4. Prefer stable subprocess contracts before linking deeply into fast moving external codebases.
 5. Keep operating system specific code behind narrow provider interfaces.
@@ -1535,7 +1620,7 @@ Milestone 0 must build a narrow Go proof containing project discovery, one verif
 1. Cold command startup time.
 2. Idle daemon resident memory.
 3. Idle memory with 50 registered routes and no PHP workers.
-4. Memory and latency with 15 addressable WordPress sites and a bounded number of active requests.
+4. Memory and latency with 15 addressable Laravel applications and a bounded number of active requests.
 5. Proxy overhead relative to direct PHP FPM access.
 6. Binary size and installation size.
 7. Build time and cross target release complexity.
@@ -1594,7 +1679,7 @@ Avoid a large matrix of binaries for every extension combination. Prefer one bro
 
 If size requires profiles, begin with:
 
-1. `wordpress`, containing the documented required and recommended WordPress baseline.
+1. `laravel`, containing the documented required and recommended Laravel baseline.
 2. `full`, including additional common database, internationalization, image, archive, and general application capabilities.
 3. `dev`, adding headers and build tools needed for dynamic extensions.
 
@@ -1714,7 +1799,7 @@ If any behavior cannot be proven compatible, PHPX must invoke Composer instead.
 
 Composer plugins and scripts execute project supplied code. PHPX must preserve this behavior while making the trust boundary visible during first use or through a security policy command. It must not describe a Composer project installation as sandboxed when it is not.
 
-WordPress core, plugins, themes, must use plugins, and WP CLI packages can also execute arbitrary PHP. The default shared native topology is intended for trusted local client projects, not hostile code isolation. Separate database users and PHP FPM pools reduce accidental crossover but do not create a security sandbox. An optional dedicated or container backend should be recommended for untrusted projects.
+Laravel applications, Composer packages, Artisan commands, service providers, migrations, seeders, and project scripts can execute arbitrary PHP. The default shared native topology is intended for trusted local projects, not hostile code isolation. Separate database users and PHP FPM pools reduce accidental crossover but do not create a security sandbox. The same warning applies to WordPress code when that adapter is installed. An optional dedicated or container backend should be recommended for untrusted projects.
 
 ### 16.6 Go Supply Chain Security
 
@@ -1751,29 +1836,29 @@ These are engineering targets, not claims until benchmarks are published.
 3. Process identifiers must be validated before termination to avoid killing unrelated processes.
 4. Stale sockets and state files must be recoverable through normal startup or `doctor`.
 
-### 17.4 WordPress Portfolio Resource Budget
+### 17.4 Laravel Portfolio Resource Budget
 
-The benchmark machine for the first published portfolio result must include an Apple Silicon Mac. Results must state the exact hardware, macOS version, PHP versions, WordPress fixtures, plugin set, database contents, and measurement method.
+The benchmark machine for the first published portfolio result must include an Apple Silicon Mac. Results must state the exact hardware, macOS version, PHP versions, Laravel fixtures, package set, service configuration, database contents, process profile, and measurement method.
 
 Engineering targets:
 
-1. Fifty registered sites create no dedicated long running process per site.
-2. Fifteen sites remain addressable concurrently through the shared proxy.
-3. An idle site returns to zero PHP child workers after its configured idle timeout.
-4. One PHP FPM master is shared by site pools using the same PHP version unless dedicated mode is selected.
-5. The global PHP worker count remains bounded even when requests arrive for every site.
+1. Fifty registered projects create no dedicated long running process per project.
+2. Fifteen Laravel applications remain addressable concurrently through the shared proxy.
+3. An idle application returns to zero PHP child workers after its configured idle timeout.
+4. One PHP FPM master is shared by application pools using the same PHP version unless dedicated mode is selected.
+5. The global PHP worker count remains bounded even when requests arrive for every application.
 6. The default global worker budget is derived from available processors and memory, can be overridden, and is visible in status output.
 7. The PHPX daemon and proxy together should target less than 100 MB idle resident memory before database and mail services.
 8. The default shared database engine should target less than 512 MB idle resident memory under the public MVP fixture workload.
-9. PHPX creates no duplicate synchronized copy of WordPress project files.
-10. No Node process, asset watcher, queue worker, or cron loop starts for a site unless requested.
-11. `phpx sites` should render 50 registry entries within 200 milliseconds without booting WordPress.
-12. A registered site should answer its first request within two seconds when its runtime and shared services are already installed and healthy.
-13. Published comparison must include DDEV with the same 50 registered and 15 available site scenario where practical.
+9. PHPX creates no duplicate synchronized copy of Laravel project files.
+10. No Node process, asset watcher, queue worker, or scheduler loop starts for an application unless requested.
+11. `phpx sites` should render 50 registry entries within 200 milliseconds without booting Laravel.
+12. A registered application should answer its first request within two seconds when its runtime and shared services are already installed and healthy.
+13. Published comparison must include a native Laravel environment such as Herd or Valet and a container environment such as Sail or DDEV with the same 50 registered and 15 available application scenario where practical.
 14. Published daemon measurements must separate total resident memory, Go heap, goroutine count, garbage collection frequency, garbage collection CPU time, and non Go child processes.
-15. Repeating site start, request, sleep, wake, and stop cycles must not produce unbounded goroutine or heap growth.
+15. Repeating application start, request, sleep, wake, and stop cycles must not produce unbounded goroutine or heap growth.
 
-The product must report actual resource consumption. It must not claim a fixed per site memory number because WordPress plugins, themes, PHP settings, and traffic change worker memory substantially.
+The product must report actual resource consumption. It must not claim a fixed per application memory number because Laravel packages, boot behavior, PHP settings, active processes, and traffic change resource use substantially.
 
 ### 17.5 Atomicity
 
@@ -1839,11 +1924,11 @@ phpx php pin 8.4
 8. Path and environment construction.
 9. Error redaction.
 10. Process identity validation.
-11. Classic WordPress and Bedrock detection.
-12. WordPress root and document root selection.
-13. WordPress PHP compatibility lookup.
-14. Standard WordPress rewrite routing.
-15. DDEV configuration mapping.
+11. Laravel application and package repository detection.
+12. Laravel application root and public document root selection.
+13. Laravel and PHP compatibility lookup.
+14. Laravel front controller and public asset routing.
+15. Laravel environment preparation planning.
 16. Shared database allocation.
 17. Site worker scheduling and global limits.
 18. Portfolio registry queries.
@@ -1855,35 +1940,35 @@ phpx php pin 8.4
 3. Cover plugins, scripts, custom installers, repositories, and authentication stubs.
 4. Verify platform requirements through actual selected runtimes.
 5. Test supported PHP patch releases and API identifiers.
-6. Compare WP CLI direct execution with PHPX wrapped WP CLI behavior.
-7. Validate classic WordPress and Bedrock database configuration strategies.
-8. Validate standard WordPress permalinks through the Go proxy.
-9. Detect unsupported custom `.htaccess` behavior.
-10. Compare imported DDEV configuration with the generated PHPX plan.
+6. Compare direct Artisan execution with PHPX wrapped Artisan behavior.
+7. Validate Laravel environment and service injection strategies.
+8. Validate Laravel front controller routing through the Go proxy.
+9. Validate that only the public document root is exposed as static content.
+10. Compare imported Sail and DDEV configuration with the generated PHPX plan when those importers are enabled.
 
 ### 19.3 End to End Fixtures
 
 Maintain representative fixtures for:
 
-1. Current classic WordPress single site.
-2. Current Bedrock site.
-3. Composer based WordPress site with plugins managed through Composer.
-4. Legacy WordPress site requiring an end of life PHP branch.
-5. WordPress site with a custom content directory.
-6. WordPress site with a custom uploads directory.
-7. WordPress site imported from common DDEV configuration.
-8. WordPress site with unsupported DDEV custom services.
-9. WordPress site with standard pretty permalinks.
-10. WordPress site with custom `.htaccess` behavior.
-11. WordPress multisite in subdirectory mode before that mode is released.
-12. WordPress multisite in subdomain mode before that mode is released.
-13. Portfolio fixture containing 50 registered sites and 15 routed sites.
-14. Current Laravel application after the WordPress public MVP.
-15. Current Symfony application after Laravel support.
-16. Generic PHP site and Composer library after Symfony support.
-17. Project with a Composer plugin.
-18. Project with a dynamic extension requirement.
-19. Project with a custom vendor directory.
+1. Current Laravel application using SQLite.
+2. Current Laravel application using the first supported shared SQL engine.
+3. Supported Laravel application using Redis and mail capture.
+4. Laravel application with queue and scheduler process declarations.
+5. Laravel application with an explicit frontend asset process.
+6. Laravel application with a subdirectory or monorepo project root.
+7. Laravel application with existing local environment secrets that PHPX must preserve.
+8. Laravel application using common Sail configuration.
+9. Laravel application using common DDEV configuration.
+10. Laravel package repository that must not be served as an application.
+11. Portfolio fixture containing 50 registered projects and 15 routed Laravel applications.
+12. Current classic WordPress site after the Laravel public MVP.
+13. Current Bedrock site after the Laravel public MVP.
+14. Current Symfony application after WordPress support.
+15. Generic PHP site and Composer library after Symfony support.
+16. Project with a Composer plugin.
+17. Project with a dynamic extension requirement.
+18. Project with a custom vendor directory.
+19. Project with an unsupported custom container service.
 
 ### 19.4 Failure Injection
 
@@ -1901,8 +1986,8 @@ Test:
 10. Invalid certificate state.
 11. Shared database engine crash while multiple sites are registered.
 12. PHP worker exhaustion across 15 requested sites.
-13. Corrupt WordPress database import.
-14. DDEV import containing unsupported custom Docker configuration.
+13. Corrupt Laravel database import.
+14. Sail or DDEV import containing unsupported custom Docker configuration.
 15. Site removal requested while no current database snapshot exists.
 
 ### 19.5 Platform Matrix
@@ -1924,8 +2009,8 @@ Publish repeatable benchmarks for:
 9. Shared database idle and active memory.
 10. First response after a site pool has returned to zero workers.
 11. Artifact cache size and reuse.
-12. Disk usage compared with DDEV and Mutagen using equivalent projects.
-13. Total process count compared with DDEV using equivalent projects.
+12. Disk usage compared with native and container Laravel environments using equivalent projects.
+13. Total process count compared with native and container Laravel environments using equivalent projects.
 14. Go heap, total resident memory, goroutine count, and garbage collection behavior while idle and under the 15 site request fixture.
 15. Goroutine and heap stability across at least 1,000 repeated site lifecycle cycles.
 16. Race detector coverage for concurrent route, process, database allocation, and shutdown operations.
@@ -1943,12 +2028,13 @@ Publish repeatable benchmarks for:
 ### 20.2 Initial Targets
 
 1. Technical proof Tier 1: macOS arm64.
-2. WordPress public MVP Tier 1: macOS arm64.
-3. Later Tier 1 candidate: Linux x86_64 with glibc.
-4. Later Tier 2 candidate: Linux arm64 with glibc.
-5. Later Tier 1 candidate: Windows x86_64.
-6. Later Tier 2 candidate: macOS x86_64 while the platform remains viable.
-7. Later Tier 2 candidate: Linux x86_64 with musl.
+2. Laravel public MVP Tier 1: macOS arm64.
+3. Laravel public MVP automation target: Linux x86_64 with glibc for frozen synchronization and project commands in continuous integration, without local DNS, TLS, proxy, or native service support.
+4. Later full Tier 1 candidate: Linux x86_64 with glibc.
+5. Later Tier 2 candidate: Linux arm64 with glibc.
+6. Later Tier 1 candidate: Windows x86_64.
+7. Later Tier 2 candidate: macOS x86_64 while the platform remains viable.
+8. Later Tier 2 candidate: Linux x86_64 with musl.
 
 ### 20.3 PHP Support
 
@@ -2011,92 +2097,144 @@ Licensing and governance remain open decisions.
 
 ## 23. Implementation Milestones
 
-### Milestone 0: WordPress and DDEV Foundation Research
+### Milestone 0: Laravel Product and Architecture Validation
 
 Deliverables:
 
 1. Confirm the working product and repository name.
-2. Measure the founding DDEV workload on an Apple Silicon Mac with a representative subset of 50 sites and 15 available sites.
-3. Document DDEV project configuration, database, router, Mutagen, WP CLI, mail, import, export, and add on behavior relevant to WordPress migration.
-4. Compare Yerd, PVM, StaticPHP, Herd, Valet, Mise, and existing PHP version managers.
-5. Select the first PHP runtime artifact provider and verify PHP FPM support.
-6. Select the first MariaDB or MySQL artifact provider and define shared engine lifecycle.
-7. Define artifact, runtime, database, application adapter, and process provider interfaces.
-8. Define the classic WordPress, Bedrock, and Composer based WordPress detection contract.
-9. Define the supported WordPress rewrite subset and explicit `.htaccess` boundary.
-10. Define WP CLI acquisition and execution policy.
-11. Import or recreate a Composer Semver conformance corpus for Bedrock and Composer based sites.
-12. Select licenses for the code and documentation.
-13. Produce security threat models for artifacts, shared native services, WordPress executable code, and local TLS.
+2. Complete the necessity interviews and comparison requirements from Section 1.9.
+3. Publish a capability matrix for Herd Basic, Herd Pro, Valet, Sail, DDEV, PHP version managers, and PHPX.
+4. Measure representative Herd or Valet, Sail or DDEV, and PHPX proof workloads on an Apple Silicon Mac with 1, 10, and 15 available Laravel applications.
+5. Define the one workflow PHPX must perform materially better, using the same locked environment locally and in Linux continuous integration as the leading candidate.
+6. Compare Yerd, StaticPHP, Herd, Valet, Sail, DDEV, Mise, and existing PHP version managers before duplicating their components.
+7. Select the first PHP runtime artifact provider and verify PHP CLI and PHP FPM support.
+8. Select SQLite and the first shared SQL, Redis, and mail providers for the proof.
+9. Define artifact, runtime, database, cache, application adapter, and process provider interfaces.
+10. Define Laravel application and package repository detection without executing project code.
+11. Define Composer and Artisan execution policies.
+12. Define safe Laravel environment preparation and secret handling.
+13. Import or recreate a Composer Semver conformance corpus for Laravel and Composer projects.
+14. Build the narrow Go language proof described in Section 13.10.10.
+15. Select licenses for the code and documentation.
+16. Produce security threat models for artifacts, shared native services, Laravel executable code, project secrets, and local TLS.
 
 Exit criteria:
 
+* [ ] The necessity test in Section 1.9 passes with recorded evidence.
 * [ ] No foundational component is being duplicated without an explicit reason.
 * [ ] The first PHP runtime artifact can be verified and legally redistributed or fetched.
 * [ ] The runtime includes usable PHP CLI and PHP FPM binaries.
-* [ ] A native database engine distribution path is understood.
-* [ ] The first DDEV comparison workload and measurement method are recorded.
-* [ ] WordPress configuration injection and secret handling have an approved direction.
+* [ ] Native SQL, Redis, and mail distribution paths are understood for the proposed MVP scope.
+* [ ] The first Laravel comparison workload and measurement method are recorded.
+* [ ] Laravel environment preparation and secret handling have an approved direction.
+* [ ] A current Laravel fixture can be discovered and served through the proof without changing the system PHP installation.
+* [ ] The project has a documented stop or narrowing decision if the evidence does not justify a new tool.
 
-### Milestone 1: Native WordPress Vertical Slice
+### Milestone 1: Native Laravel Vertical Slice
 
 Deliverables:
 
 1. Go module and command line shell.
 2. User scoped daemon.
-3. Classic WordPress and Bedrock discovery.
+3. Laravel application and package repository discovery.
 4. Managed PHP installation for macOS arm64.
-5. One managed PHP FPM master with demand driven site pools.
-6. Go HTTP and TLS proxy.
-7. Explicit local DNS and certificate setup.
-8. One shared MariaDB or MySQL engine with isolated project databases and users.
-9. Managed WP CLI.
-10. Managed Composer for Bedrock.
-11. `phpx init`, `up`, `down`, `status`, `wp`, `composer`, `run`, `db import`, `db export`, and `doctor`.
-12. Classic WordPress and Bedrock fixtures.
-13. A 15 site routing and worker scheduling fixture.
+5. Managed Composer and project supplied Artisan execution.
+6. One managed PHP FPM master with demand driven application pools.
+7. Go HTTP and TLS proxy.
+8. Explicit local DNS and certificate setup.
+9. SQLite plus one shared SQL engine with isolated project databases and users.
+10. Reviewable Laravel local environment preparation.
+11. `phpx init`, `up`, `down`, `status`, `artisan`, `composer`, `run`, `db create`, and `doctor`.
+12. Current Laravel fixtures for SQLite and the selected shared SQL engine.
+13. A 15 application routing and worker scheduling fixture.
 
 Exit criteria:
 
-* [ ] A clean macOS arm64 environment can serve the classic WordPress fixture through trusted HTTPS.
-* [ ] The Bedrock fixture installs Composer packages and serves correctly.
-* [ ] WP CLI operates on both fixtures through their selected runtime.
-* [ ] Both fixtures use separate databases and users within one shared database engine.
-* [ ] Standard WordPress permalinks work.
-* [ ] Fifteen registered site routes can remain available while idle pools have zero PHP child workers.
+* [ ] A clean macOS arm64 environment can install dependencies and serve the Laravel fixture through trusted HTTPS.
+* [ ] Artisan operates through the selected runtime with direct command compatibility.
+* [ ] SQLite and shared SQL fixtures connect through approved environment strategies.
+* [ ] Laravel front controller routing and public assets work.
+* [ ] Fifteen registered application routes can remain available while idle pools have zero PHP child workers.
 * [ ] The system PHP installation remains unchanged.
 * [ ] Interrupted installation recovery is proven.
 
-### Milestone 2: WordPress Public MVP
+### Milestone 2: Laravel Public MVP
 
 Deliverables:
 
 1. `phpx.toml` and `phpx.lock` version 1.
-2. Portfolio registry supporting at least 50 sites.
+2. Portfolio registry supporting at least 50 projects.
 3. Link, unlink, park, unpark, sleep, wake, open, logs, and site status workflows.
 4. PHP runtime list, pin, update, and remove operations.
-5. Supported PHP branches plus a documented legacy WordPress policy.
-6. Versioned WordPress extension baseline.
+5. Supported PHP branches plus a documented Laravel and legacy PHP policy.
+6. Versioned Laravel extension baseline.
 7. PIE integration for selected dynamic extensions.
 8. Database create, import, export, snapshot, restore, shell, and remove operations.
-9. Shared mail capture with site filtering.
-10. Classic WordPress and Bedrock local configuration strategies.
-11. Common DDEV WordPress configuration import.
-12. WordPress upload directory import and export.
-13. Frozen, offline, noninteractive, and JSON modes.
+9. Shared Redis and mail capture with project isolation and filtering.
+10. Laravel environment preparation with existing secret preservation.
+11. Explicit queue, scheduler, log, and frontend process profiles.
+12. Frozen, offline, noninteractive, and JSON modes.
+13. Continuous integration validation using the committed lock.
 14. Signed macOS release and installer.
-15. Published PHPX and DDEV portfolio benchmark.
+15. Published PHPX, Herd or Valet, and Sail or DDEV workflow and portfolio benchmarks.
 
 Exit criteria:
 
-* [ ] Every WordPress public MVP success criterion passes on macOS arm64.
-* [ ] Fifty sites remain registered without dedicated per site background processes.
-* [ ] Fifteen sites remain addressable without 15 web and database container pairs.
-* [ ] Database and upload data survive stop, sleep, restart, and PHPX upgrades.
-* [ ] DDEV import refuses unsafe automatic cutover when unsupported custom behavior exists.
+* [ ] Every Laravel public MVP success criterion passes on macOS arm64.
+* [ ] Fifty projects remain registered without dedicated per project background processes.
+* [ ] Fifteen Laravel applications remain addressable without 15 web and database container pairs.
+* [ ] Database and local service data survive stop, sleep, restart, and PHPX upgrades.
+* [ ] Existing `.env` files and application secrets survive initialization and synchronization unchanged unless the developer explicitly approves a mutation.
+* [ ] The same committed PHPX lock validates locally and in the supported continuous integration fixture.
 * [ ] Security, support, legacy PHP, and artifact provenance policies are published.
 
-### Milestone 3: WordPress Portfolio Maturity
+### Milestone 3: Laravel Workflow Maturity
+
+Deliverables:
+
+1. Additional SQL provider support selected by validated demand.
+2. Laravel Sail and DDEV import, coexistence, and migration diagnostics.
+3. Supported profiles for Horizon, Reverb, queue workers, the scheduler, Pail, and frontend development.
+4. An explicit compatibility strategy for Octane and custom web server requirements.
+5. Testing database allocation that cannot overwrite development data.
+6. Team environment validation and deeper continuous integration integration.
+7. Environment diff and explanation commands.
+8. Resource history and portfolio diagnostics.
+9. A completed decision on managed Node acquisition versus integration with existing Node managers.
+10. Additional macOS reliability and upgrade testing.
+
+Exit criteria:
+
+* [ ] Imported Sail and DDEV projects receive a reviewable plan and unsafe automatic cutover remains blocked.
+* [ ] Laravel package repositories cannot be misidentified and served as full applications.
+* [ ] Custom web server requirements produce a supported backend or a blocking explanation.
+* [ ] Development profiles start only the processes explicitly selected by the project or command.
+* [ ] Team locks are enforceable locally and in continuous integration.
+* [ ] Portfolio performance remains within published budgets.
+
+### Milestone 4: WordPress Adapter
+
+Deliverables:
+
+1. Classic WordPress, Bedrock, and Composer based WordPress discovery.
+2. WordPress root, content directory, upload directory, and document root selection.
+3. Managed WP CLI acquisition and execution.
+4. WordPress database import, export, snapshot, restore, and explicit URL migration workflows.
+5. Standard WordPress front controller and permalink routing.
+6. Classic WordPress and Bedrock local environment strategies.
+7. Versioned WordPress extension baseline.
+8. Common DDEV WordPress import and coexistence.
+9. Current classic WordPress, Bedrock, and Composer based fixtures.
+
+Exit criteria:
+
+* [ ] Current classic WordPress and Bedrock fixtures reach working local HTTPS environments.
+* [ ] WP CLI operates through the selected project runtime and cannot target the wrong site silently.
+* [ ] Standard WordPress permalinks work through the default proxy.
+* [ ] Database and upload workflows preserve project data and never run URL replacement implicitly.
+* [ ] Laravel workflow and portfolio benchmarks do not regress beyond the published tolerance.
+
+### Milestone 5: WordPress Portfolio Maturity
 
 Deliverables:
 
@@ -2104,41 +2242,18 @@ Deliverables:
 2. WordPress multisite subdomain support with wildcard local routing and TLS.
 3. Plugin and theme project workflows using an explicit host WordPress site.
 4. Richer DDEV import coverage and migration diagnostics.
-5. An explicit Apache compatibility backend or a documented alternative for sites dependent on custom `.htaccess` behavior.
-6. Optional Redis and object cache support.
-7. Team environment validation and continuous integration integration.
-8. Environment diff and explanation commands.
-9. Resource history and portfolio diagnostics.
-10. Additional macOS reliability and upgrade testing.
+5. An explicit Apache compatibility backend or documented alternative for sites dependent on custom `.htaccess` behavior.
+6. Optional WordPress Redis and object cache integration.
+7. Environment diff and portfolio diagnostics for mixed Laravel and WordPress projects.
 
 Exit criteria:
 
 * [ ] Both supported multisite modes pass routing, WP CLI, database, upload, and domain fixtures.
 * [ ] Plugin and theme repositories cannot accidentally operate against the wrong host site.
 * [ ] Custom web server requirements produce a supported backend or a blocking explanation.
-* [ ] Team locks are enforceable locally and in continuous integration.
-* [ ] Portfolio performance remains within published budgets.
+* [ ] WordPress portfolio behavior remains within the shared resource budgets.
 
-### Milestone 4: Laravel Adapter
-
-Deliverables:
-
-1. Laravel project discovery and document root selection.
-2. Composer first synchronization.
-3. Managed Artisan execution.
-4. Laravel database presets for MariaDB, MySQL, PostgreSQL, and SQLite.
-5. Optional Redis, queue, scheduler, mail, and asset process declarations.
-6. Laravel specific diagnostics.
-7. Current Laravel fixture and compatibility tests.
-
-Exit criteria:
-
-* [ ] A current Laravel application reaches a working local HTTPS environment from a clean supported machine.
-* [ ] Composer plugins and scripts match direct Composer behavior.
-* [ ] Laravel background processes start only when configured.
-* [ ] WordPress portfolio benchmarks do not regress beyond the published tolerance.
-
-### Milestone 5: Symfony and Generic PHP Adapters
+### Milestone 6: Symfony and Generic PHP Adapters
 
 Deliverables:
 
@@ -2156,7 +2271,7 @@ Exit criteria:
 * [ ] A generic Composer library can synchronize and test without starting local services.
 * [ ] New adapters use shared core services rather than duplicating lifecycle logic.
 
-### Milestone 6: Additional Platforms
+### Milestone 7: Additional Platforms
 
 Deliverables:
 
@@ -2172,7 +2287,7 @@ Exit criteria:
 * [ ] Platform differences are explicit in configuration and diagnostics.
 * [ ] Windows receives no support tier until local sites, PHP execution, databases, and cleanup are tested end to end.
 
-### Milestone 7: Composer Installation Acceleration
+### Milestone 8: Composer Installation Acceleration
 
 Deliverables:
 
@@ -2193,23 +2308,23 @@ Exit criteria:
 
 ### Scenario 1: Clean Machine
 
-**Given** a supported macOS arm64 machine without usable PHP, WP CLI, Composer, web server, or database
+**Given** a supported macOS arm64 machine without usable PHP, Composer, web server, or database
 
-**When** the developer runs `phpx up` in a classic WordPress project
+**When** the developer runs `phpx up` in a supported Laravel application
 
-**Then** PHPX installs verified managed artifacts, allocates a database, registers trusted HTTPS, serves WordPress, and leaves the system runtime unchanged.
+**Then** PHPX installs verified managed artifacts, installs Composer dependencies, prepares approved local environment values, allocates the configured database, registers trusted HTTPS, serves Laravel, and leaves the system runtime unchanged.
 
 ### Scenario 2: Multiple PHP Versions
 
-**Given** WordPress Site A requires PHP 8.2 and WordPress Site B requires PHP 8.5
+**Given** Laravel Application A and Laravel Application B require different supported PHP branches
 
 **When** the developer runs a PHP command in each project through PHPX
 
 **Then** each command uses the correct runtime without global relinking.
 
-### Scenario 3: Bedrock Composer Plugin
+### Scenario 3: Laravel Composer Plugin
 
-**Given** a Bedrock project depends on a Composer plugin
+**Given** a Laravel application depends on a Composer plugin
 
 **When** the developer synchronizes the project
 
@@ -2217,19 +2332,19 @@ Exit criteria:
 
 ### Scenario 4: Missing Extension
 
-**Given** WordPress or Composer requires a supported dynamic extension that is absent
+**Given** Laravel or Composer requires a supported dynamic extension that is absent
 
 **When** PHPX resolves the environment
 
 **Then** PHPX identifies a PIE provider, requests any required explicit selection, installs it for the correct ABI, locks it, and reruns platform validation.
 
-### Scenario 5: DDEV Import
+### Scenario 5: Existing Environment Preservation
 
-**Given** a WordPress project contains common `.ddev/config.yaml` settings and an existing DDEV database
+**Given** a Laravel application already contains a local `.env` file, application key, and database credentials
 
-**When** the developer runs `phpx import ddev`
+**When** the developer runs `phpx init` or `phpx up`
 
-**Then** PHPX proposes mapped PHPX configuration, identifies unsupported customization, offers an explicit database migration, and leaves the DDEV environment intact.
+**Then** PHPX reports any incompatible values and leaves the existing file and secrets unchanged unless the developer approves a specific mutation.
 
 ### Scenario 6: Frozen Continuous Integration
 
@@ -2263,61 +2378,69 @@ Exit criteria:
 
 **Then** PHPX resumes or safely restarts the download and never treats the partial archive as installed.
 
-### Scenario 10: WordPress Portfolio
+### Scenario 10: Laravel Portfolio
 
-**Given** 50 registered WordPress sites using three PHP versions and two compatible database engine versions
+**Given** 50 registered PHP projects containing Laravel applications that use several PHP versions and compatible service versions
 
 **When** 15 sites are requested during the same work period
 
-**Then** each site routes to its matching PHP FPM pool, compatible sites share engine processes, the global worker cap is respected, and idle pools return to zero PHP child workers.
+**Then** each application routes to its matching PHP FPM pool, compatible applications share engine processes, the global worker cap is respected, and idle pools return to zero PHP child workers.
 
 ### Scenario 11: Destructive Database Removal
 
-**Given** a WordPress project database contains local data and no current snapshot
+**Given** a Laravel project database contains local data and no current snapshot
 
 **When** the developer requests database removal
 
-**Then** PHPX displays the site, engine, database, user, and backup state and refuses deletion without explicit confirmation.
+**Then** PHPX displays the application, engine, database, user, and backup state and refuses deletion without explicit confirmation.
 
 ### Scenario 12: Shared Database Engine
 
-**Given** 12 WordPress sites request MariaDB 10.11 in shared mode
+**Given** 12 Laravel applications request the same supported SQL engine and version in shared mode
 
 **When** all sites are registered
 
-**Then** PHPX runs one MariaDB 10.11 engine and creates 12 separate databases and users.
+**Then** PHPX runs one compatible engine process and creates 12 separate databases and users.
 
-### Scenario 13: Idle Site Wake
+### Scenario 13: Idle Application Wake
 
-**Given** a registered WordPress site has no PHP child worker
+**Given** a registered Laravel application has no PHP child worker
 
 **When** its local URL receives a request
 
 **Then** the selected PHP FPM master creates a worker on demand and the proxy completes the request without a manual site start command.
 
-### Scenario 14: Custom Apache Behavior
+### Scenario 14: Explicit Development Profile
 
-**Given** a WordPress project contains `.htaccess` directives outside the supported WordPress rewrite subset
+**Given** a Laravel application declares queue, scheduler, log, and frontend processes but does not enable automatic startup
 
-**When** PHPX plans the local environment
+**When** the developer runs the ordinary web profile
 
-**Then** PHPX reports the unsupported directives and refuses to claim full compatibility without an approved server backend.
+**Then** PHPX serves the application without starting those optional processes, and `phpx up --profile dev` starts only the processes named by the development profile.
 
-### Scenario 15: WordPress URL Migration
+### Scenario 15: Laravel Package Repository
 
-**Given** a database contains a production or `.ddev.site` URL
+**Given** a repository contains Laravel packages but no complete Laravel application or public front controller
 
-**When** the database is imported
+**When** PHPX discovers and synchronizes the repository
 
-**Then** PHPX preserves the imported values until the developer explicitly approves a WP CLI aware search and replace operation.
+**Then** PHPX treats it as a Composer library, supports package and test commands, and does not register a local web route automatically.
 
 ### Scenario 16: Site Sleep
 
-**Given** a WordPress site has an asset watcher and PHP workers running
+**Given** a Laravel application has an asset watcher, queue worker, and PHP workers running
 
 **When** the developer runs `phpx site sleep`
 
-**Then** PHPX stops optional project processes, allows PHP workers to retire, preserves the route, database, uploads, configuration, and future wake behavior.
+**Then** PHPX stops optional project processes, allows PHP workers to retire, and preserves the route, database, storage, configuration, and future wake behavior.
+
+### Scenario 17: Later WordPress Adapter
+
+**Given** the WordPress adapter milestone is complete and a classic WordPress project contains a database dump and standard permalink rules
+
+**When** the developer initializes and starts the project
+
+**Then** PHPX reuses the Laravel proven runtime, proxy, database, and scheduling core while adding WordPress discovery, WP CLI, import, and permalink behavior.
 
 ## 25. Risks and Mitigations
 
@@ -2343,13 +2466,13 @@ Exit criteria:
 
 **Risk:** Runtime management, Composer, local serving, services, tools, and acceleration could become several products at once.
 
-**Mitigation:** Enforce WordPress milestone gates. The first vertical slice includes only the local capabilities required to prove the lean WordPress topology. Defer Laravel, Symfony, generic PHP, broad services, graphical clients, and native Composer installation until their named milestones.
+**Mitigation:** Enforce the necessity gate and Laravel milestone boundaries. The first vertical slice includes only the local capabilities required to prove one complete Laravel workflow and the lean shared topology. Defer WordPress, Symfony, generic PHP, broad service matrices, graphical clients, and native Composer installation until their named milestones.
 
 ### 25.5 Existing Competitors
 
-**Risk:** DDEV, Yerd, Herd, PVM, Mise, or another project may already solve important portions of the product.
+**Risk:** Herd, Valet, Sail, DDEV, Yerd, Mise, or another project may already solve enough of the product that a new tool creates fragmentation instead of value.
 
-**Mitigation:** Treat integration and contribution as preferred options when they preserve the product promise. Compete on the missing project and automation contract, not on duplicating every local environment feature.
+**Mitigation:** Apply the Section 1.9 stop conditions. Treat integration and contribution as preferred options when they preserve the product promise. Compete only on a validated open, headless, deterministic, native environment contract, not on duplicating local HTTPS, PHP switching, or service buttons.
 
 ### 25.6 Privileged Operating System Integration
 
@@ -2383,43 +2506,43 @@ Exit criteria:
 
 ### 25.11 Shared Service Failure Radius
 
-**Risk:** One shared database or PHP FPM master failure can affect several sites at once.
+**Risk:** One shared database, cache, or PHP FPM master failure can affect several applications at once.
 
 **Mitigation:** Use health checks, bounded restart policy, versioned engine instances, durable project data, logical snapshots, clear dependency reporting, and optional dedicated mode for sensitive projects.
 
 ### 25.12 Shared Native Trust Boundary
 
-**Risk:** A compromised or intentionally hostile WordPress plugin may access resources available to the local user and may attack shared local services.
+**Risk:** A compromised or intentionally hostile Laravel application, Composer package, Artisan command, migration, or project script may access resources available to the local user and may attack shared local services.
 
 **Mitigation:** State clearly that native mode is for trusted local projects, use separate database users, restrict services to loopback, minimize credentials exposed to each process, and offer a future dedicated or container backend for untrusted code.
 
-### 25.13 WordPress Configuration Diversity
+### 25.13 Laravel Environment Mutation
 
-**Risk:** Classic WordPress projects define database and URL constants through arbitrary PHP in `wp-config.php`, while Bedrock and custom stacks use different environment conventions.
+**Risk:** Automatically copying or editing `.env`, generating `APP_KEY`, or changing database and service values may destroy local secrets, disconnect existing data, or make the project behave differently from its documented workflow.
 
-**Mitigation:** Detect known strategies, propose reviewable local integration, never rewrite configuration silently, keep generated credentials out of version control, and block startup when PHPX cannot prove which database the site will use.
+**Mitigation:** Generate a reviewable plan, preserve existing files by default, store generated credentials outside version control, expose every injected value through explanation commands, and require explicit approval for persistent mutation.
 
-### 25.14 Apache Compatibility
+### 25.14 Laravel Server Modes
 
-**Risk:** WordPress plugins and legacy sites may depend on custom `.htaccess` behavior that a Go front controller adapter cannot reproduce.
+**Risk:** Applications may depend on Octane, FrankenPHP, RoadRunner, custom Nginx behavior, websocket servers, or container networking that PHP FPM behind the default proxy cannot reproduce.
 
-**Mitigation:** Support the standard WordPress rewrite subset, inspect custom directives, publish the boundary, and add an explicit Apache compatibility backend instead of pretending all directives work.
+**Mitigation:** Make PHP FPM the documented first backend, detect known alternative server declarations, refuse unsupported claims, and add explicit backend adapters only after end to end fixtures prove them.
 
-### 25.15 Legacy Client Sites
+### 25.15 Development Process Sprawl
 
-**Risk:** A WordPress portfolio may contain sites requiring PHP branches or database versions that are no longer supported upstream.
+**Risk:** Queue workers, the scheduler, Horizon, Reverb, Pail, Vite, Octane, and custom project commands can recreate the same resource problem as per project containers when started automatically.
 
-**Mitigation:** Separate compatibility from security support, require explicit legacy selection, preserve visible warnings, isolate legacy engines by version, and provide upgrade diagnostics without forcing application changes.
+**Mitigation:** Keep web routing separate from development process profiles, default optional processes to stopped, cap global resources, and show every active process and its owner in status output.
 
-### 25.16 Native Database Distribution
+### 25.16 Native Service Distribution
 
-**Risk:** Portable MariaDB and MySQL acquisition, upgrades, data directories, and macOS architecture support create another artifact supply chain.
+**Risk:** Portable SQL, Redis, mail, search, and storage service acquisition, upgrades, data directories, and platform support create several artifact supply chains.
 
-**Mitigation:** Begin with one reviewed MariaDB version, keep the database provider replaceable, prefer logical backups across incompatible versions, verify artifacts, and delay broad engine matrices until real projects require them.
+**Mitigation:** Begin with SQLite and the minimum validated shared providers, keep every service provider replaceable, prefer logical backups across incompatible versions, verify artifacts, and delay broad engine matrices until real projects require them.
 
 ### 25.17 Performance Claim Credibility
 
-**Risk:** A leaner than DDEV claim may become vague or misleading when plugin sets and traffic differ.
+**Risk:** A leaner than container environments claim may become vague or misleading when package sets, enabled processes, services, and traffic differ.
 
 **Mitigation:** Publish exact fixtures, commands, hardware, idle and active states, process counts, memory, disk, and response measurements. Keep claims limited to reproducible benchmark results.
 
@@ -2428,6 +2551,18 @@ Exit criteria:
 **Risk:** Garbage collection, goroutine leaks, data races, `cgo` dependencies, or careless process cancellation may undermine the lean resource promise or create unreliable shutdown behavior.
 
 **Mitigation:** Prove the smallest Go control plane in Milestone 0, profile the real portfolio fixture, establish goroutine ownership and cancellation rules, run race tests, avoid `cgo`, isolate operating system providers, and enforce explicit heap and goroutine stability budgets.
+
+### 25.19 Managed JavaScript Boundary
+
+**Risk:** Managing Node.js, Bun, Corepack, and JavaScript package managers can double the product scope and duplicate mature version managers, while ignoring them can prevent a clean Laravel clone from serving its frontend.
+
+**Mitigation:** Supervise declared frontend commands in the first MVP, detect and explain missing runtimes, compare integration with existing managers, and add managed JavaScript acquisition only after Laravel workflow research proves it is necessary.
+
+### 25.20 Later WordPress Complexity
+
+**Risk:** Classic WordPress configuration, WP CLI, multisite, custom content paths, legacy PHP, `.htaccess`, and plugin behavior can overwhelm the Laravel first roadmap if they leak into the core too early.
+
+**Mitigation:** Keep WordPress behind its application adapter and named milestones. Preserve the detailed WordPress requirements as later acceptance gates without allowing them to delay the Laravel public MVP.
 
 ## 26. Open Decisions
 
@@ -2475,9 +2610,9 @@ Exit criteria:
 
 ### 26.8 Service Backend
 
-**Recommended direction:** Begin with one shared native MariaDB 10.11 provider for WordPress, then add versioned MariaDB or MySQL providers based on real portfolio requirements. Keep an optional container adapter for exceptional projects.
+**Recommended direction:** Support SQLite without a daemon, then select one shared SQL provider plus Redis and mail capture from validated Laravel demand. Keep an optional container adapter for exceptional projects.
 
-**Still required:** Decide service scope, licensing, update sources, and data migration behavior.
+**Still required:** Choose the first SQL engine, decide exact service scope, review licensing and update sources, and define backup and data migration behavior.
 
 ### 26.9 Windows Timing
 
@@ -2493,15 +2628,15 @@ Exit criteria:
 
 ### 26.11 PHP FPM Sharing
 
-**Recommended direction:** One PHP FPM master per PHP runtime version, one pool per site, `ondemand` workers, and one global worker ceiling.
+**Recommended direction:** One PHP FPM master per PHP runtime version, one pool per application, `ondemand` workers, and one global worker ceiling.
 
 **Still required:** Benchmark OPcache behavior, configuration reload cost, failure radius, process limits, and dedicated mode.
 
-### 26.12 Classic WordPress Configuration
+### 26.12 Laravel Environment Strategy
 
-**Recommended direction:** Detect existing environment aware configuration first. Otherwise propose a local `wp-config-phpx.php` include through an explicit reviewable change.
+**Recommended direction:** Preserve an existing `.env` file, prefer supervised process environment injection for generated local credentials, and offer `.env.example` copying or persistent edits only through a reviewable approved setup action.
 
-**Still required:** Test common agency conventions, local ignored config files, Bedrock environment files, DDEV generated includes, and hardcoded production constants.
+**Still required:** Test Laravel environment precedence, application key handling, encrypted environment files, testing environments, team conventions, Sail and DDEV values, and interactions with cached configuration.
 
 ### 26.13 Default Local Domain
 
@@ -2509,17 +2644,17 @@ Exit criteria:
 
 **Still required:** Decide wildcard resolver implementation, multisite domain mapping, certificate scope, and conflict behavior with Valet, Herd, DDEV, and Yerd.
 
-### 26.14 DDEV Migration Depth
+### 26.14 Sail and DDEV Migration Depth
 
-**Recommended direction:** Import common WordPress configuration and data first. Inventory unsupported custom behavior without translating arbitrary Docker Compose.
+**Recommended direction:** Import common Laravel service, runtime, URL, and process configuration first. Inventory unsupported custom behavior without translating arbitrary Docker Compose.
 
-**Still required:** Define the exact supported `.ddev/config.yaml` fields and determine whether PHPX may invoke DDEV export commands during an approved migration.
+**Still required:** Define the exact supported Sail Compose and `.ddev/config.yaml` fields and determine whether PHPX may invoke existing export commands during an approved migration.
 
-### 26.15 WordPress Default PHP Policy
+### 26.15 Laravel Support Policy
 
-**Recommended direction:** Select a currently supported PHP branch that official WordPress compatibility data accepts, while preserving explicit project pins and warnings for legacy sites.
+**Recommended direction:** Begin with the current maintained Laravel release and the PHP branches permitted by its Composer constraints, then add older Laravel releases only through complete fixtures.
 
-**Still required:** Decide whether the default favors the newest compatible branch or a more conservative compatibility branch for third party plugins and themes.
+**Still required:** Define the exact Laravel release window, patch update policy, package compatibility warnings, and behavior for applications on unsupported framework or PHP versions.
 
 ### 26.16 Untrusted Project Isolation
 
@@ -2529,46 +2664,72 @@ Exit criteria:
 
 ### 26.17 Core Implementation Language, Resolved
 
-**Accepted decision:** Go for the native control plane. PHP remains responsible for Composer, WordPress, WP CLI, framework execution, project scripts, and compatibility probes.
+**Accepted decision:** Go for the native control plane. PHP remains responsible for Composer, Artisan, Laravel, WordPress, WP CLI, framework execution, project scripts, and compatibility probes.
 
 **Validation required:** Complete the Milestone 0 Go proof and publish its resource measurements before Milestone 1 expands. Reconsider the language only if profiling shows that Go itself prevents PHPX from meeting a published requirement.
 
+### 26.18 Product Differentiation
+
+**Recommended direction:** Position PHPX as an open, headless, locked, native Laravel environment control plane that uses Composer and Artisan directly. Do not position it as another local HTTPS switcher or Composer replacement.
+
+**Still required:** Pass the Section 1.9 necessity test and show a material workflow or resource advantage over Herd, Valet, Sail, and DDEV.
+
+### 26.19 Managed JavaScript Runtime
+
+**Recommended direction:** Detect and supervise project declared frontend commands while initially integrating with an existing Node or Bun installation selected by the project.
+
+**Still required:** Determine whether clean machine Laravel onboarding requires PHPX to acquire Node.js and Corepack, or whether integration with existing version managers provides a smaller and more compatible boundary.
+
+### 26.20 Later WordPress Configuration
+
+**Recommended direction:** When the WordPress adapter begins, detect existing environment aware configuration first. Otherwise propose an explicit reviewable local integration without silently rewriting `wp-config.php`.
+
+**Still required:** Test common agency conventions, local ignored configuration files, Bedrock environment files, DDEV generated includes, hardcoded production constants, and legacy PHP policies during the WordPress milestones.
+
 ## 27. Required Research Before Implementation
 
-1. Inventory a representative anonymized subset of the founding 50 site WordPress portfolio.
-2. Record PHP versions, WordPress versions, database engines, document roots, Composer usage, DDEV customizations, upload paths, and required services.
-3. Benchmark DDEV with representative 1 site, 10 site, and 15 site available workloads on the Apple Silicon reference machine.
-4. Review DDEV architecture, WordPress quickstart, database workflows, performance modes, custom web server configuration, and add on behavior.
-5. Review official WordPress runtime, database, HTTPS, extension, rewrite, and multisite requirements.
-6. Review WP CLI distribution, update, package, path, multisite, database, and search and replace behavior.
-7. Prototype PHP FPM `ondemand` pools across 50 configured sites and multiple PHP versions.
-8. Measure one master per PHP version against one master per site.
-9. Prototype a global PHP worker ceiling and first request wake behavior.
-10. Audit native MariaDB and MySQL artifacts, licenses, configuration, logical backup, and upgrade paths on macOS arm64.
-11. Define classic WordPress and Bedrock local configuration strategies.
-12. Define the supported WordPress rewrite subset and `.htaccess` detection method.
-13. Review Composer source and documented plugin contracts.
-14. Build a Composer Semver conformance suite for PHP runtime requests.
-15. Inspect Composer lock platform metadata across representative Bedrock and WordPress projects.
-16. Audit StaticPHP artifacts, manifests, build recipes, and licenses.
-17. Audit PIE target selection and noninteractive workflows.
-18. Review Yerd architecture, behavior, protocols, and collaboration paths without assuming direct Rust library reuse.
-19. Define a managed Mago executable integration contract.
-20. Review Libretto compatibility tests, cache architecture, and executable interoperability as references for a possible future Go implementation.
-21. Compare existing `.php-version` behavior across version managers.
-22. Define runtime artifact and shared native service threat models.
-23. Measure common PHP runtime and extension combinations across the WordPress portfolio and public Composer projects.
-24. Validate classic WordPress and Bedrock fixtures on a clean macOS arm64 environment.
-25. Build and measure the Milestone 0 Go control plane proof.
-26. Profile daemon memory, garbage collection, goroutine lifecycle, route registration, child process supervision, and release complexity against the published budgets.
-27. Measure a PHP based discovery and command runner as the ecosystem compatibility baseline.
-28. Record the Go validation evidence before Milestone 1 expands and investigate Rust only if the Go runtime is proven to be the limiting factor.
+1. Interview at least fifteen independent Laravel developers or five Laravel teams using Herd, Valet, Sail, DDEV, or custom local environments.
+2. Record the repeated problems, current workarounds, switching barriers, required platforms, team size, services, and willingness to adopt an open headless tool.
+3. Build a current capability matrix for Herd Basic, Herd Pro, Valet, Sail, DDEV, Yerd, Mise, and PHPX using official documentation and hands on verification.
+4. Inventory representative Laravel applications across current framework versions, PHP branches, Composer features, SQL engines, Redis, queues, mail, frontend tooling, and custom processes.
+5. Benchmark native and container workflows with representative 1 application, 10 application, and 15 application workloads on the Apple Silicon reference machine.
+6. Measure time from clean clone to trusted local route and passing test command for each comparison workflow.
+7. Prove or reject the hypothesis that one locked PHPX environment can serve both local macOS setup and Linux continuous integration validation.
+8. Review Laravel installation, configuration, Artisan, queue, scheduler, cache, database, testing, Vite, Sail, Octane, Reverb, Horizon, Pail, and package development behavior.
+9. Prototype PHP FPM `ondemand` pools across 50 configured projects and multiple PHP versions.
+10. Measure one PHP FPM master per PHP version against one master per application.
+11. Prototype a global PHP worker ceiling and first request wake behavior.
+12. Define Laravel application, package repository, application root, and public document root detection without executing project code.
+13. Define safe `.env`, `.env.example`, `APP_KEY`, service credential, and configuration cache behavior.
+14. Audit SQLite and candidate SQL, Redis, and mail artifacts, licenses, configuration, logical backup, and upgrade paths on macOS arm64.
+15. Decide whether frontend runtime acquisition belongs inside PHPX or should integrate with existing Node and Bun managers.
+16. Review Composer source and documented plugin contracts.
+17. Build a Composer Semver conformance suite for PHP runtime requests.
+18. Inspect Composer lock platform metadata across representative Laravel projects.
+19. Audit StaticPHP artifacts, manifests, build recipes, and licenses.
+20. Audit PIE target selection and noninteractive workflows.
+21. Review Yerd architecture, behavior, protocols, and collaboration paths without assuming direct Rust library reuse.
+22. Define a managed Mago executable integration contract.
+23. Review Libretto compatibility tests, cache architecture, and executable interoperability as references for a possible future Go implementation.
+24. Compare existing `.php-version` behavior across version managers.
+25. Define runtime artifact, project execution, secret handling, and shared native service threat models.
+26. Measure common PHP runtime and extension combinations across the Laravel fixture set and public Composer projects.
+27. Validate current Laravel fixtures on a clean macOS arm64 environment.
+28. Build and measure the Milestone 0 Go control plane proof.
+29. Profile daemon memory, garbage collection, goroutine lifecycle, route registration, child process supervision, and release complexity against the published budgets.
+30. Measure a PHP based discovery and command runner as the ecosystem compatibility baseline.
+31. Record the Go validation evidence before Milestone 1 expands and investigate Rust only if the Go runtime is proven to be the limiting factor.
+32. Make and record an explicit build, narrow, contribute elsewhere, or stop decision before Milestone 1.
 
 ## 28. Reference Sources
 
 Composer documentation
 
 https://getcomposer.org/doc
+
+Composer introduction and scope
+
+https://getcomposer.org/doc/00-intro.md
 
 Composer platform dependencies
 
@@ -2612,11 +2773,31 @@ https://github.com/libretto-pm/libretto
 
 Laravel Valet
 
-https://laravel.com/docs/valet
+https://laravel.com/docs/13.x/valet
+
+Laravel Sail
+
+https://laravel.com/docs/13.x/sail
 
 Laravel Herd
 
 https://herd.laravel.com/docs
+
+Laravel Herd installation and bundled tools
+
+https://herd.laravel.com/docs/macos/getting-started/installation
+
+Laravel Herd project configuration
+
+https://herd.laravel.com/docs/macos/sites/herd-yaml
+
+Laravel Herd services
+
+https://herd.laravel.com/docs/macos/herd-pro-services/services
+
+Laravel documentation
+
+https://laravel.com/docs/13.x
 
 uv
 
@@ -2672,19 +2853,19 @@ https://www.php.net/manual/en/book.phar.php
 
 DDEV architecture
 
-https://ddev.readthedocs.io/en/stable/users/usage/architecture/
+https://docs.ddev.com/en/stable/users/usage/architecture/
 
 DDEV performance on macOS
 
-https://ddev.readthedocs.io/en/stable/users/install/performance/
+https://docs.ddev.com/en/stable/users/install/performance/
 
 DDEV WordPress quickstart
 
-https://ddev.readthedocs.io/en/stable/users/quickstart/
+https://docs.ddev.com/en/stable/users/quickstart/
 
 DDEV configuration
 
-https://ddev.readthedocs.io/en/stable/users/configuration/config/
+https://docs.ddev.com/en/stable/users/configuration/config/
 
 WordPress requirements
 
@@ -2704,6 +2885,6 @@ https://www.php.net/manual/en/install.fpm.configuration.php
 
 ## 29. Refinement Readiness
 
-This draft is ready for a dedicated refinement pass focused on product positioning, Go package boundaries, daemon protocol design, runtime artifact strategy, Composer compatibility, public MVP boundaries, configuration format, platform priorities, and open source governance.
+This draft is ready for a dedicated refinement pass focused first on Laravel product necessity, competitive differentiation, and the one workflow PHPX must perform materially better. Technical refinement should then cover Go package boundaries, daemon protocol design, runtime artifact strategy, Composer compatibility, Laravel environment safety, public MVP boundaries, configuration format, platform priorities, and open source governance.
 
-The specification should not be converted into implementation phases until the Milestone 0 research decisions have been reviewed, because runtime provenance and existing project integration can materially change the architecture.
+The specification should not be converted into implementation phases until the Section 1.9 necessity test and Milestone 0 research decisions have been reviewed. A build, narrow, contribute elsewhere, or stop decision must be recorded first because existing Laravel tools already cover much of the visible feature surface.

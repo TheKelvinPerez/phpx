@@ -4,11 +4,11 @@
 
 **Working product name:** PHPX
 
-**Status:** Draft, ready for structured refinement
+**Status:** Draft, Go architecture selected, ready for structured refinement
 
 **Created:** July 15, 2026
 
-**Document purpose:** Define a WordPress first, Composer compatible, Rust based PHP toolchain that can install and select PHP runtimes, run many local sites without one container stack per site, synchronize project environments, execute isolated tools, and provide local development services through one command line interface.
+**Document purpose:** Define a WordPress first, Composer compatible, Go based PHP toolchain that can install and select PHP runtimes, run many local sites without one container stack per site, synchronize project environments, execute isolated tools, and provide local development services through one command line interface.
 
 The name PHPX is provisional. Public naming, package namespace availability, domain availability, and trademark review remain open decisions.
 
@@ -142,9 +142,9 @@ Compatible WordPress projects should share one MariaDB or MySQL server process w
 
 PHPX must delegate to Composer whenever native behavior cannot preserve Composer semantics. Unsupported behavior must trigger a transparent fallback, never an approximation that appears successful.
 
-### 2.8 Rust Owns the Control Plane
+### 2.8 Go Owns the Control Plane
 
-Rust should be the default implementation language for project discovery, artifact management, version selection, caching, process supervision, proxying, diagnostics, and the command line experience.
+Go is the implementation language for project discovery, artifact management, version selection, caching, process supervision, proxying, diagnostics, and the command line experience.
 
 PHP remains the correct runtime for Composer plugins, Composer callbacks, application scripts, and PHP tools.
 
@@ -235,7 +235,7 @@ PIE is the official PHP extension installer and the successor to PECL. PHPX shou
 
 ### 4.4 Mago
 
-Mago provides Rust based formatting, linting, and static analysis. PHPX should evaluate direct integration or managed execution rather than recreating those capabilities.
+Mago provides Rust based formatting, linting, and static analysis. Because PHPX uses Go, managed executable integration is preferred over linking to internal Mago libraries. PHPX should not recreate those capabilities.
 
 ### 4.5 Laravel Valet and Laravel Herd
 
@@ -243,7 +243,7 @@ Valet and Herd establish familiar concepts such as parked directories, linked si
 
 ### 4.6 Yerd
 
-Yerd already provides a Rust based local PHP environment with PHP version management, local domains, TLS, services, and Composer support. A technical and product comparison is required before PHPX builds its server layer. Integration, shared components, or contribution may be better than duplicating mature functionality.
+Yerd already provides a Rust based local PHP environment with PHP version management, local domains, TLS, services, and Composer support. A technical and product comparison is required before PHPX builds its server layer. PHPX should reuse proven behavior and protocols where practical, but the Go core must not depend on unstable internal Rust library interfaces.
 
 ### 4.7 StaticPHP
 
@@ -251,7 +251,7 @@ StaticPHP provides an important possible source of portable PHP artifacts for ea
 
 ### 4.8 Libretto
 
-Libretto explores Composer compatible package installation in Rust. Its compatibility boundaries, cache model, resolver, autoload generation, and project health should be evaluated before PHPX attempts any native Composer acceleration.
+Libretto explores Composer compatible package installation in Rust. Its compatibility boundaries, cache model, resolver, autoload generation, and project health should be evaluated before PHPX attempts any native Composer acceleration. Reuse would require a stable executable or language neutral protocol rather than direct library integration.
 
 ## 5. User Personas
 
@@ -485,13 +485,13 @@ Run phpx run composer test
 ### 8.1 Technical Proof Scope
 
 1. macOS arm64.
-2. Rust command line application.
+2. Go command line application.
 3. Classic WordPress and Bedrock project discovery.
 4. WordPress and Composer PHP requirement resolution.
 5. Managed PHP installation from a vetted artifact source.
 6. Managed WP CLI installation.
 7. Managed Composer installation for Composer based projects.
-8. Shared Rust proxy and trusted local TLS.
+8. Shared Go proxy and trusted local TLS.
 9. Shared MariaDB or MySQL engine with isolated project databases.
 10. Demand driven PHP FPM pools.
 11. `init`, `up`, `down`, `status`, `wp`, `sync`, `run`, `composer`, `db`, and `doctor` commands.
@@ -548,7 +548,7 @@ Run phpx run composer test
 9. Requiring a graphical interface.
 10. Silently executing privileged operations.
 11. Full compatibility with arbitrary Docker Compose overrides in the public MVP.
-12. Parsing and emulating every possible Apache `.htaccess` directive in the Rust proxy.
+12. Parsing and emulating every possible Apache `.htaccess` directive in the Go proxy.
 13. Starting Node, asset watchers, cron loops, or queue workers for every registered site by default.
 
 ## 9. Functional Requirements
@@ -787,7 +787,7 @@ Run phpx run composer test
 
 **FR 10.2:** Each site must use its selected PHP version for both command line and web execution.
 
-**FR 10.3:** The preferred architecture is a Rust reverse proxy forwarding to a site pool managed by the PHP FPM master for the selected PHP version.
+**FR 10.3:** The preferred architecture is a Go reverse proxy forwarding to a site pool managed by the PHP FPM master for the selected PHP version.
 
 **FR 10.4:** `phpx link` must register the current project explicitly.
 
@@ -1243,7 +1243,7 @@ Command Runner
 
 WordPress Local Control Plane
     ├── User Daemon
-    ├── Rust HTTP and TLS Proxy
+    ├── Go HTTP and TLS Proxy
     ├── DNS Integration
     ├── PHP FPM Supervisor
     ├── Shared Database Supervisor
@@ -1254,41 +1254,52 @@ WordPress Local Control Plane
     └── Process Log Router
 ```
 
-### 13.2 Proposed Rust Workspace
+### 13.2 Proposed Go Module
 
 ```text
-crates/
-    phpx-cli
-    phpx-core
-    phpx-project
-    phpx-adapters
-    phpx-wordpress
-    phpx-constraints
-    phpx-runtime
-    phpx-artifacts
-    phpx-wp-cli
-    phpx-composer
-    phpx-extensions
-    phpx-tools
-    phpx-database
-    phpx-ddev-import
-    phpx-scheduler
-    phpx-process
-    phpx-server
-    phpx-services
-    phpx-daemon
-    phpx-test-support
+cmd/
+    phpx/
+internal/
+    app/
+    project/
+    adapter/
+    wordpress/
+    constraints/
+    runtime/
+    artifact/
+    wpcli/
+    composer/
+    extension/
+    tool/
+    database/
+    ddevimport/
+    scheduler/
+    process/
+    proxy/
+    service/
+    daemon/
+    platform/
+    testkit/
+testdata/
+    fixtures/
+go.mod
+go.sum
 ```
+
+The first release should prefer one `phpx` executable that can run normal commands and launch its daemon mode. A separate daemon executable should be introduced only if operating system lifecycle requirements make it necessary.
 
 ### 13.3 Dependency Direction
 
-1. `phpx-core` defines shared domain types and errors.
-2. Project, adapter, WordPress, constraint, runtime, artifact, WP CLI, Composer, extension, database, and tool crates depend on core abstractions.
-3. WordPress depends on stable adapter interfaces and must not place application assumptions inside the runtime or artifact crates.
-4. Server, database, scheduler, and service components depend on runtime and process abstractions, not the command line parser.
-5. The command line crate composes capabilities but contains minimal business logic.
+1. Domain packages define shared types and errors without importing command line or daemon delivery packages.
+2. Project, adapter, WordPress, constraint, runtime, artifact, WP CLI, Composer, extension, database, and tool packages depend inward on narrow domain contracts.
+3. WordPress depends on stable adapter interfaces and must not place application assumptions inside runtime or artifact packages.
+4. Proxy, database, scheduler, and service packages depend on runtime and process abstractions, not the command line parser.
+5. The `cmd/phpx` package composes capabilities but contains minimal business logic.
 6. The daemon exposes a versioned local protocol and uses the same core services as the CLI.
-7. Test support provides fixtures and fake artifact repositories without entering production dependencies.
+7. Interfaces should normally be declared by the consuming package and remain narrow enough to support deterministic fakes.
+8. The `internal` boundary prevents application internals from becoming an accidental public Go API.
+9. Platform specific implementations use focused files and build constraints behind shared interfaces.
+10. Test support provides fixtures and fake artifact repositories without entering production dependencies.
 
 ### 13.4 Managed Store Layout
 
@@ -1361,7 +1372,7 @@ The target topology for 50 registered sites is:
 
 ```text
 One PHPX user daemon
-    ├── One Rust HTTP and TLS proxy
+    ├── One Go HTTP and TLS proxy
     ├── One site registry and resource scheduler
     ├── One shared mail capture process
     ├── One shared MariaDB 10.11 engine for compatible sites
@@ -1394,11 +1405,15 @@ This model removes the container bind mount and synchronization costs that can a
 
 ### 13.10 Implementation Language Decision
 
-Rust is the preferred implementation language for the durable PHPX control plane. This includes the command line executable, user daemon, local proxy, resource scheduler, artifact verifier, runtime installer, process supervisor, and operating system integration.
+Go is the selected implementation language for the durable PHPX control plane. This includes the command line executable, user daemon, local proxy, resource scheduler, artifact verifier, runtime installer, process supervisor, and operating system integration.
 
-This is not a goal to rewrite the PHP ecosystem in Rust. PHP remains the application language and the compatibility authority for Composer, WordPress, WP CLI, Laravel, Symfony, and project supplied scripts. PHPX should invoke those tools through the selected PHP runtime instead of approximating their behavior.
+This is not a goal to rewrite the PHP ecosystem in Go. PHP remains the application language and the compatibility authority for Composer, WordPress, WP CLI, Laravel, Symfony, and project supplied scripts. PHPX should invoke those tools through the selected PHP runtime instead of approximating their behavior.
 
-The choice of Rust must be justified by the product constraints and validated in Milestone 0. Rust is not a brand requirement. If a measured prototype shows that another language delivers the resource, safety, distribution, and maintenance goals more effectively, the architecture must be reconsidered before the public interface hardens.
+**Decision status:** Accepted on July 15, 2026.
+
+Go was selected because PHPX is primarily a web adjacent orchestration product. Its control plane coordinates HTTP, TLS, local sockets, downloads, files, databases, PHP FPM, and child processes. Go provides native distribution and strong concurrency while remaining close to the founding maintainer's web and backend experience. This improves the probability of reaching a useful WordPress release and sustaining the project afterward.
+
+The product must not claim that Go is categorically faster than PHP or Rust. Go is expected to provide fast startup and efficient resident control plane behavior, but every performance claim remains subject to the published PHPX benchmarks. WordPress application execution remains PHP execution regardless of the control plane language.
 
 #### 13.10.1 Why the Control Plane Should Not Depend on PHP
 
@@ -1416,58 +1431,61 @@ PHP is still the right language in several parts of the system:
 
 PHP could operate a long lived daemon through existing event loop and process libraries. The objection is not that PHP is incapable or always slow. The stronger objections are the bootstrap dependency, the need to bundle an interpreter, the resident runtime cost, and the weaker fit for a cross platform process and service supervisor that must remain available while PHP installations are being changed.
 
-#### 13.10.2 Why Rust Fits This Product
+#### 13.10.2 Why Go Fits This Product
 
-1. Rust can produce a native executable that starts without PHP, Composer, Node.js, Bun, a Java Virtual Machine, or a .NET runtime.
-2. Rust has no garbage collector. This removes a managed garbage collection runtime from the resident daemon and gives PHPX direct control over allocation and object lifetime. It does not guarantee low memory use, so the daemon still requires measurement and memory budgets.
-3. Ownership and type checking prevent broad classes of memory lifetime, data race, and invalid state errors before release. This matters in a daemon that handles concurrent requests, process identities, filesystem mutations, downloaded archives, credentials, and shared service state.
-4. Rust provides low level access to sockets, process groups, signals, filesystem APIs, native libraries, and platform services without requiring the entire application to use unsafe memory operations.
-5. Async networking and structured concurrency libraries are suitable for the proxy, downloader, local protocol, health checks, and process event streams.
-6. Cargo gives the project one integrated build, test, dependency, workspace, and release workflow.
-7. The emerging PHP systems tooling represented by Mago, Yerd, and Libretto creates potential for shared Rust libraries, subprocess integration, or upstream collaboration.
-8. Native startup and predictable idle behavior support the specific goal of keeping 50 sites registered while avoiding one heavy environment per site.
+1. Go can produce a native executable that starts without a separately installed PHP, Composer, Node.js, Bun, Java, or .NET runtime.
+2. The standard library directly covers HTTP, TLS, sockets, archive formats, hashing, structured data, child processes, signals, filesystem access, testing, profiling, and cross platform primitives.
+3. Goroutines and channels fit concurrent proxy requests, downloads, process event streams, health checks, log routing, and bounded background work without requiring a complex asynchronous type system.
+4. The Go toolchain provides integrated formatting, testing, fuzzing, race detection, profiling, dependency management, and cross compilation.
+5. Garbage collection removes most manual memory lifetime management and lets the initial team focus on WordPress behavior, artifact safety, process cleanup, and user experience.
+6. The small language and fast compiler reduce the time required to understand, review, build, and change the control plane.
+7. Go's common use in web services, command line tools, proxies, cloud infrastructure, and platform engineering makes PHPX concepts transferable to a broad contributor and maintainer audience.
+8. Direct compilation to macOS, Linux, and Windows targets is straightforward while the core avoids C dependencies.
+9. Native startup and low overhead are expected to support 50 registered sites without one heavy environment per site.
+10. Built in profiling makes heap growth, garbage collection, goroutine leaks, CPU use, blocking, and contention measurable during the portfolio benchmark.
 
-Rust is most valuable here around PHP, not instead of PHP. The control plane performs systems work. PHP continues to perform PHP ecosystem work.
+Go is most valuable here around PHP, not instead of PHP. The Go control plane performs orchestration. PHP continues to perform PHP ecosystem work.
 
-#### 13.10.3 Rust Costs and Failure Modes
+#### 13.10.3 Go Costs and Failure Modes
 
-Rust also creates material costs:
+Go also creates material costs:
 
-1. Initial development can be slower for contributors who are new to ownership, lifetimes, traits, and async Rust.
-2. Compile times and cross compilation can become release bottlenecks.
-3. Async code, cancellation, process cleanup, and operating system abstraction remain difficult even with memory safety.
-4. Rust has fewer likely contributors in the WordPress community than PHP or JavaScript.
-5. Crate dependencies create their own supply chain risk and maintenance burden.
-6. Unsafe code, native libraries, shell commands, and operating system APIs can reintroduce safety problems.
-7. Rust does not solve PHP binary distribution, database distribution, certificates, DNS, or WordPress compatibility by itself.
-8. A poorly designed Rust daemon can still leak memory, deadlock, consume excessive CPU, corrupt state through logic errors, or expose insecure local interfaces.
-9. Choosing Rust for components that only express WordPress policy can make the project harder to contribute to without producing a meaningful performance or safety benefit.
+1. Every standard Go executable includes a runtime and garbage collector.
+2. Garbage collection reduces direct control over memory and can increase resident memory or introduce latency when allocation behavior is poor.
+3. The compiler does not prevent all data races. Race testing observes only code paths that actually execute.
+4. Goroutines can leak when ownership, cancellation, and channel shutdown are unclear.
+5. Nil values, unchecked errors, panics, and partially initialized structs can produce runtime failures that a more expressive type system might prevent.
+6. `cgo` complicates builds, cross compilation, distribution, and process isolation.
+7. Go binaries may be larger than equivalent carefully optimized native binaries because they include the runtime and standard library code they use.
+8. External modules create supply chain and maintenance risk even when the standard library covers much of the product.
+9. Go does not solve PHP binary distribution, database distribution, certificates, DNS, or WordPress compatibility by itself.
+10. A poorly designed Go daemon can still leak memory, leak goroutines, deadlock, consume excessive CPU, corrupt state through logic errors, or expose insecure local interfaces.
 
-The team must account for these costs in sequencing, contributor documentation, testing, and the public extension model.
+The team must account for these costs through resource budgets, profiling, cancellation rules, race testing, failure injection, dependency review, and narrow operating system providers.
 
 #### 13.10.4 Why Not C or C++
 
-C and C++ can meet the native startup, low level control, low memory, and no garbage collector requirements. They also have mature platform APIs and broad library access.
+C and C++ can meet the native startup, low level control, and low memory requirements. They also have mature platform APIs and broad library access.
 
 They are not the preferred default because the control plane is both privileged in effect and exposed to complex inputs. It downloads artifacts, verifies metadata, extracts archives, edits configuration, removes files, routes HTTP requests, and supervises processes. Memory corruption, use after free behavior, undefined behavior, and data races create unnecessary risk in that boundary. Modern C++ reduces some of this risk through disciplined ownership types, but it does not enforce the same safety baseline across the program.
 
-C++ also brings more variation in build systems, dependency management, compiler behavior, and safe coding conventions. PHPX may still call established C or C++ libraries through narrow reviewed interfaces when reimplementation would be wasteful.
+C++ also brings more variation in build systems, dependency management, compiler behavior, and safe coding conventions. Go provides the memory safety and development speed this product needs without taking on that complexity. PHPX may still call established C or C++ executables through narrow reviewed process interfaces when reimplementation would be wasteful.
 
 #### 13.10.5 Why Not Bun and TypeScript
 
 Bun and TypeScript offer fast product iteration, familiar asynchronous programming, a large package ecosystem, and the ability to compile an application into a distributable executable. Bun documents that such an executable includes a copy of the Bun runtime.
 
-That model can remove a separate install step, but it does not remove the runtime. The control plane would still carry JavaScriptCore garbage collection, dynamic language behavior, Bun release compatibility, and a larger runtime surface inside every binary. TypeScript checks disappear at runtime, so data crossing process, filesystem, and network boundaries still requires careful runtime validation.
+That model can remove a separate install step, but it does not remove the runtime. Go also embeds a runtime, so the presence of a runtime is not the deciding factor. Go is preferred because its static native toolchain, process model, mature cross platform support, and standard library fit a long lived local control plane better. TypeScript checks disappear at runtime, so data crossing process, filesystem, and network boundaries still requires careful runtime validation.
 
-Bun may be a good future choice for a graphical client, web interface, documentation tooling, or development scripts. It is less aligned with the smallest possible always available daemon, direct operating system control, and compile time enforcement of shared mutable state.
+Bun may be a good future choice for a graphical client, web interface, documentation tooling, or development scripts. It is not selected for the first control plane because PHPX benefits more from Go's static compilation, standard library, explicit error handling, and established infrastructure ecosystem.
 
-#### 13.10.6 Why Not Go
+#### 13.10.6 Why Not Rust
 
-Go is the strongest alternative to Rust for PHPX. It has excellent networking and concurrency support, straightforward cross platform builds, fast compilation, simple deployment, and a much gentler learning curve. A capable version of this product could absolutely be built in Go.
+Rust is the strongest alternative to Go for PHPX. It offers finer memory control, no garbage collector, stronger compile time protection against data races and invalid memory access, excellent C interoperability, and the possibility of lower idle memory.
 
-The Rust preference comes from the strict idle resource goal, absence of a garbage collector, finer control over process and memory behavior, stronger compile time protection around shared state, and possible reuse within the growing Rust based PHP tooling ecosystem.
+Rust is not selected for the initial implementation because most PHPX work is orchestration around HTTP, files, downloads, and processes rather than an embedded runtime, database engine, or latency critical data plane. The largest resource improvement comes from shared native services and demand driven PHP workers, not from removing the Go garbage collector. Go also aligns more closely with the founding maintainer's web background and offers a shorter path to a maintainable WordPress release.
 
-Those advantages are not free. Go may produce a working and maintainable public tool sooner, especially for a small team. Its garbage collector is engineered for low latency and provides tuning controls, so it cannot be rejected through a generic claim that garbage collection is bad. Rust should remain the choice only if the Milestone 0 prototype demonstrates an important resource or correctness advantage without creating unacceptable development and release complexity.
+Mago, Yerd, and Libretto remain valuable adjacent Rust projects. PHPX should integrate through stable executable or language neutral interfaces instead of adopting a second implementation language. Rust may be reconsidered for an isolated component only when profiling proves that Go cannot meet a published resource, latency, security, or native integration requirement. The public MVP must not become a mixed Go and Rust codebase by default.
 
 #### 13.10.7 Why Not Zig or Another Native Language
 
@@ -1475,37 +1493,44 @@ Zig has appealing properties for this product, including no garbage collector, s
 
 Swift would fit a macOS only product well, but PHPX intends to support Linux and eventually Windows. Java, Kotlin, C Sharp, and similar managed platforms provide mature libraries and productive development, but add a runtime and garbage collector to a tool whose central promise includes low idle overhead and simple bootstrap distribution.
 
-The comparison is therefore not Rust against every language in the abstract. It is which language best satisfies native bootstrap, low resident cost, safe concurrency, cross platform system control, contributor sustainability, and time to a reliable WordPress release.
+The comparison is therefore not Go against every language in the abstract. It is which language best satisfies native bootstrap, acceptable resident cost, practical concurrency, cross platform system control, contributor sustainability, and time to a reliable WordPress release.
 
-#### 13.10.8 Why Developer Tools Are Moving Toward Rust
+#### 13.10.8 Why Go Is the Right First Implementation
 
-Not everything is moving to Rust. Go, C++, JavaScript, Python, PHP, Java, and C Sharp remain better choices for many products. Rust is unusually visible in command line and developer infrastructure rewrites because those tools benefit from a combination that used to require a difficult tradeoff:
+Go is selected through a product tradeoff rather than a claim that it wins every technical category:
 
-1. Native startup speed and compact distribution.
-2. Performance close to C and C++ for CPU and input or output intensive work.
-3. Memory and thread safety checked by the compiler.
-4. No garbage collector or required language runtime.
-5. A modern dependency manager and build tool through Cargo.
-6. Practical libraries for command interfaces, networking, parsing, serialization, cryptography, and asynchronous work.
+1. PHPX is a web adjacent control plane, not a new PHP interpreter or operating system service manager for hostile multiuser workloads.
+2. The product needs HTTP, TLS, process management, downloads, files, concurrency, and cross platform releases more than manual memory control.
+3. Shared services, native filesystem access, and demand driven PHP FPM workers produce the primary resource savings.
+4. A smaller language and fast build loop improve the chance that a small team ships and maintains the complete WordPress workflow.
+5. Go expands the contributor and maintainer path into backend, platform, cloud, and infrastructure engineering while remaining approachable from PHP.
+6. Rust remains available later if measured evidence identifies an isolated problem that Go cannot solve within the resource budget.
 
-There is also visibility bias. A Rust rewrite is easier to market than a careful improvement to an existing tool. Rewriting a mature PHP component solely because Rust is fashionable would add compatibility risk. PHPX has a stronger case because it needs a new native control plane that exists before and around the PHP runtime.
+Go is not selected merely because it is native or commonly used for infrastructure. The Milestone 0 proof must still demonstrate that the daemon, proxy, and scheduler meet PHPX resource and reliability targets.
 
 #### 13.10.9 Language Boundary Rules
 
-1. Do not reimplement Composer in the Rust core.
-2. Do not reimplement WP CLI commands in the Rust core.
+1. Do not reimplement Composer in the Go core.
+2. Do not reimplement WP CLI commands in the Go core.
 3. Keep framework specific application execution inside the selected PHP runtime.
 4. Prefer stable subprocess contracts before linking deeply into fast moving external codebases.
 5. Keep operating system specific code behind narrow provider interfaces.
-6. Forbid unsafe Rust in normal workspace crates. Any unavoidable unsafe module requires isolation, written invariants, focused tests, and review.
-7. Pin dependencies, retain lockfiles, audit advisories and licenses, and minimize crates that execute build scripts.
-8. Treat all project files, downloaded metadata, archives, daemon messages, and subprocess output as untrusted input.
-9. Keep runtime installation and Composer execution usable without the daemon so a daemon failure cannot prevent recovery.
-10. Add a language neutral local protocol only when a graphical client or external integration actually needs it.
+6. Prefer the Go standard library before adding an external module.
+7. Commit `go.mod` and `go.sum`, pin module versions, audit advisories and licenses, and review every new transitive dependency.
+8. Forbid `unsafe` in normal application packages. Any unavoidable use requires isolation, written invariants, focused tests, and review.
+9. Avoid `cgo` in the control plane. Any exception requires a documented need and a release plan for every supported target.
+10. Every goroutine must have an owner, cancellation path, bounded work policy, and observable shutdown behavior.
+11. Propagate `context.Context` through cancellable network, process, and filesystem operations without storing it in long lived domain structs.
+12. Do not use panic for expected project, network, process, or user input failures.
+13. Execute subprocesses with explicit argument vectors and context cancellation. Do not construct shell command strings when direct execution is possible.
+14. Treat all project files, downloaded metadata, archives, daemon messages, and subprocess output as untrusted input.
+15. Require `gofmt`, `go vet`, `go test`, race testing, vulnerability scanning, and the selected static analyzer in continuous integration.
+16. Keep runtime installation and Composer execution usable without the daemon so a daemon failure cannot prevent recovery.
+17. Add a language neutral local protocol only when a graphical client or external integration actually needs it.
 
 #### 13.10.10 Milestone 0 Language Proof
 
-Before the architecture is considered settled, Milestone 0 must build a narrow Rust proof containing project discovery, one verified download, one managed child process, a local daemon connection, and one proxied PHP request. It must record:
+Milestone 0 must build a narrow Go proof containing project discovery, one verified download, one managed child process, a local daemon connection, and one proxied PHP request. It must record:
 
 1. Cold command startup time.
 2. Idle daemon resident memory.
@@ -1515,10 +1540,14 @@ Before the architecture is considered settled, Milestone 0 must build a narrow R
 6. Binary size and installation size.
 7. Build time and cross target release complexity.
 8. Behavior after a killed child process, stale process identifier, corrupt download, interrupted extraction, and daemon restart.
-9. The amount of operating system specific and unsafe code required.
-10. Contributor setup time on a clean machine.
+9. Heap size, garbage collection frequency, garbage collection CPU cost, and memory limit behavior.
+10. Goroutine count before and after repeated site start, stop, request, and failure cycles.
+11. Race detector results under realistic concurrent workloads.
+12. The amount of operating system specific, `cgo`, and unsafe code required.
+13. Whether release targets build with `CGO_ENABLED=0`.
+14. Contributor setup time on a clean machine.
 
-A smaller Go comparison must exercise the resident daemon, route registry, and child process supervisor using the same fixtures. PHP should also be measured as the compatibility baseline for project discovery and command execution. Rust remains the preferred language when it meets the published resource budgets and the implementation complexity remains supportable. The decision must be recorded before the WordPress vertical slice expands.
+PHP should also be measured as the compatibility baseline for project discovery and command execution. Go remains the accepted implementation language when it meets the published resource budgets and the implementation complexity remains supportable. If the proof misses a budget, the team must first profile allocations, goroutine lifecycle, proxy behavior, and process topology. Rust evaluation is warranted only when evidence shows that the Go runtime or language model is the limiting factor rather than the surrounding architecture.
 
 ## 14. PHP Runtime Distribution
 
@@ -1620,7 +1649,7 @@ The test suite must cover:
 
 ### 15.3 Future Native Locked Install Path
 
-A native Rust installation path may be introduced only for explicitly supported locked installations.
+A native Go installation path may be introduced only for explicitly supported locked installations.
 
 Eligibility detection must account for:
 
@@ -1687,6 +1716,16 @@ Composer plugins and scripts execute project supplied code. PHPX must preserve t
 
 WordPress core, plugins, themes, must use plugins, and WP CLI packages can also execute arbitrary PHP. The default shared native topology is intended for trusted local client projects, not hostile code isolation. Separate database users and PHP FPM pools reduce accidental crossover but do not create a security sandbox. An optional dedicated or container backend should be recommended for untrusted projects.
 
+### 16.6 Go Supply Chain Security
+
+1. Prefer the Go standard library when it provides a maintainable implementation.
+2. Commit `go.mod` and `go.sum` and build releases with a documented Go toolchain version.
+3. Run Go vulnerability analysis for every release and in continuous integration.
+4. Review module licenses, maintainers, update history, transitive dependencies, and security posture before adoption.
+5. Do not add direct branch, local replacement, or unreviewed fork dependencies to release builds.
+6. Treat `cgo` and `unsafe` usage as security exceptions requiring written justification and focused review.
+7. Record the Go toolchain and module graph in release provenance and the software bill of materials.
+
 ## 17. Performance and Reliability Targets
 
 These are engineering targets, not claims until benchmarks are published.
@@ -1731,6 +1770,8 @@ Engineering targets:
 11. `phpx sites` should render 50 registry entries within 200 milliseconds without booting WordPress.
 12. A registered site should answer its first request within two seconds when its runtime and shared services are already installed and healthy.
 13. Published comparison must include DDEV with the same 50 registered and 15 available site scenario where practical.
+14. Published daemon measurements must separate total resident memory, Go heap, goroutine count, garbage collection frequency, garbage collection CPU time, and non Go child processes.
+15. Repeating site start, request, sleep, wake, and stop cycles must not produce unbounded goroutine or heap growth.
 
 The product must report actual resource consumption. It must not claim a fixed per site memory number because WordPress plugins, themes, PHP settings, and traffic change worker memory substantially.
 
@@ -1816,7 +1857,7 @@ phpx php pin 8.4
 5. Test supported PHP patch releases and API identifiers.
 6. Compare WP CLI direct execution with PHPX wrapped WP CLI behavior.
 7. Validate classic WordPress and Bedrock database configuration strategies.
-8. Validate standard WordPress permalinks through the Rust proxy.
+8. Validate standard WordPress permalinks through the Go proxy.
 9. Detect unsupported custom `.htaccess` behavior.
 10. Compare imported DDEV configuration with the generated PHPX plan.
 
@@ -1866,7 +1907,7 @@ Test:
 
 ### 19.5 Platform Matrix
 
-Every supported tier requires automated testing on each supported architecture. A platform cannot be labeled supported solely because the Rust binary compiles.
+Every supported tier requires automated testing on each supported architecture. A platform cannot be labeled supported solely because the Go binary compiles.
 
 ### 19.6 Performance Tests
 
@@ -1885,6 +1926,9 @@ Publish repeatable benchmarks for:
 11. Artifact cache size and reuse.
 12. Disk usage compared with DDEV and Mutagen using equivalent projects.
 13. Total process count compared with DDEV using equivalent projects.
+14. Go heap, total resident memory, goroutine count, and garbage collection behavior while idle and under the 15 site request fixture.
+15. Goroutine and heap stability across at least 1,000 repeated site lifecycle cycles.
+16. Race detector coverage for concurrent route, process, database allocation, and shutdown operations.
 
 ## 20. Platform Support Policy
 
@@ -1921,7 +1965,7 @@ Publish repeatable benchmarks for:
 1. Signed release archives.
 2. A reviewed shell installer for macOS during the first public MVP.
 3. Direct manual archive installation.
-4. Cargo installation for contributors, not as the primary user requirement.
+4. `go install` for contributors, not as the primary user installation path.
 
 ### 21.2 Later Distribution
 
@@ -1998,12 +2042,12 @@ Exit criteria:
 
 Deliverables:
 
-1. Rust workspace and command line shell.
+1. Go module and command line shell.
 2. User scoped daemon.
 3. Classic WordPress and Bedrock discovery.
 4. Managed PHP installation for macOS arm64.
 5. One managed PHP FPM master with demand driven site pools.
-6. Rust HTTP and TLS proxy.
+6. Go HTTP and TLS proxy.
 7. Explicit local DNS and certificate setup.
 8. One shared MariaDB or MySQL engine with isolated project databases and users.
 9. Managed WP CLI.
@@ -2357,7 +2401,7 @@ Exit criteria:
 
 ### 25.14 Apache Compatibility
 
-**Risk:** WordPress plugins and legacy sites may depend on custom `.htaccess` behavior that a Rust front controller adapter cannot reproduce.
+**Risk:** WordPress plugins and legacy sites may depend on custom `.htaccess` behavior that a Go front controller adapter cannot reproduce.
 
 **Mitigation:** Support the standard WordPress rewrite subset, inspect custom directives, publish the boundary, and add an explicit Apache compatibility backend instead of pretending all directives work.
 
@@ -2379,11 +2423,11 @@ Exit criteria:
 
 **Mitigation:** Publish exact fixtures, commands, hardware, idle and active states, process counts, memory, disk, and response measurements. Keep claims limited to reproducible benchmark results.
 
-### 25.18 Rust Delivery Complexity
+### 25.18 Go Runtime and Concurrency Discipline
 
-**Risk:** Rust learning cost, async complexity, platform integration, and release engineering may delay the WordPress product enough to erase the benefit of the language choice.
+**Risk:** Garbage collection, goroutine leaks, data races, `cgo` dependencies, or careless process cancellation may undermine the lean resource promise or create unreliable shutdown behavior.
 
-**Mitigation:** Prove the smallest control plane in Milestone 0, keep PHP ecosystem behavior in PHP, compare the resident core with Go, isolate operating system providers, measure contributor setup, and reconsider the language before public interfaces harden if the evidence does not support Rust.
+**Mitigation:** Prove the smallest Go control plane in Milestone 0, profile the real portfolio fixture, establish goroutine ownership and cancellation rules, run race tests, avoid `cgo`, isolate operating system providers, and enforce explicit heap and goroutine stability budgets.
 
 ## 26. Open Decisions
 
@@ -2413,21 +2457,21 @@ Exit criteria:
 
 ### 26.5 Server Implementation
 
-**Recommended direction:** Evaluate reuse or integration with Yerd before implementing a new proxy, DNS service, and runtime manager.
+**Recommended direction:** Study Yerd's behavior, boundaries, and protocols before implementing the Go proxy, DNS integration, and runtime manager. Interoperate only through a stable executable or language neutral contract.
 
-**Still required:** Compare daemon boundaries, licenses, project configuration, platform support, and contribution feasibility.
+**Still required:** Compare daemon boundaries, licenses, project configuration, platform support, protocol stability, and contribution feasibility.
 
 ### 26.6 Code Quality Integration
 
-**Recommended direction:** Integrate or execute Mago instead of creating another parser, formatter, linter, and analyzer.
+**Recommended direction:** Execute Mago as a managed tool instead of creating another parser, formatter, linter, and analyzer.
 
-**Still required:** Determine whether stable library interfaces exist or a managed executable is safer.
+**Still required:** Define the managed executable version, capability discovery, configuration, output, and failure contract.
 
 ### 26.7 Composer Acceleration
 
-**Recommended direction:** Defer native installation and evaluate Libretto when the compatibility contract is established.
+**Recommended direction:** Defer native installation and evaluate Libretto as a compatibility and performance reference when the Composer contract is established. Any in process native implementation belongs in the Go core.
 
-**Still required:** Audit correctness, project maturity, licensing, and shared component opportunities.
+**Still required:** Audit correctness, project maturity, licensing, executable interoperability, and reusable conformance fixtures.
 
 ### 26.8 Service Backend
 
@@ -2483,11 +2527,11 @@ Exit criteria:
 
 **Still required:** Define the threat model, dedicated database behavior, filesystem boundaries, and user experience for switching backends.
 
-### 26.17 Core Implementation Language
+### 26.17 Core Implementation Language, Resolved
 
-**Recommended current decision:** Rust for the native control plane, PHP for Composer, WordPress, WP CLI, framework execution, and compatibility probes.
+**Accepted decision:** Go for the native control plane. PHP remains responsible for Composer, WordPress, WP CLI, framework execution, project scripts, and compatibility probes.
 
-**Still required:** Complete the Milestone 0 Rust proof, compare the resident core with a narrow Go implementation, publish the measurements, and record the final architecture decision before Milestone 1 expands.
+**Validation required:** Complete the Milestone 0 Go proof and publish its resource measurements before Milestone 1 expands. Reconsider the language only if profiling shows that Go itself prevents PHPX from meeting a published requirement.
 
 ## 27. Required Research Before Implementation
 
@@ -2508,17 +2552,17 @@ Exit criteria:
 15. Inspect Composer lock platform metadata across representative Bedrock and WordPress projects.
 16. Audit StaticPHP artifacts, manifests, build recipes, and licenses.
 17. Audit PIE target selection and noninteractive workflows.
-18. Review Yerd architecture and identify reusable components or collaboration paths.
-19. Review Mago library boundaries and executable integration.
-20. Review Libretto compatibility tests and cache architecture.
+18. Review Yerd architecture, behavior, protocols, and collaboration paths without assuming direct Rust library reuse.
+19. Define a managed Mago executable integration contract.
+20. Review Libretto compatibility tests, cache architecture, and executable interoperability as references for a possible future Go implementation.
 21. Compare existing `.php-version` behavior across version managers.
 22. Define runtime artifact and shared native service threat models.
 23. Measure common PHP runtime and extension combinations across the WordPress portfolio and public Composer projects.
 24. Validate classic WordPress and Bedrock fixtures on a clean macOS arm64 environment.
-25. Build and measure the Milestone 0 Rust control plane proof.
-26. Build a narrow Go comparison for daemon memory, route registration, child process supervision, and release complexity.
+25. Build and measure the Milestone 0 Go control plane proof.
+26. Profile daemon memory, garbage collection, goroutine lifecycle, route registration, child process supervision, and release complexity against the published budgets.
 27. Measure a PHP based discovery and command runner as the ecosystem compatibility baseline.
-28. Record the core language architecture decision with benchmark evidence before Milestone 1 expands.
+28. Record the Go validation evidence before Milestone 1 expands and investigate Rust only if the Go runtime is proven to be the limiting factor.
 
 ## 28. Reference Sources
 
@@ -2578,21 +2622,45 @@ uv
 
 https://docs.astral.sh/uv
 
-Rust language overview
+Go documentation
 
-https://rust-lang.org
+https://go.dev/doc/
 
-Rust ownership
+2025 Go Developer Survey
 
-https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html
+https://go.dev/blog/survey2025
 
-Rust concurrency
+Go module reference
 
-https://doc.rust-lang.org/book/ch16-00-concurrency.html
+https://go.dev/ref/mod
+
+Effective Go
+
+https://go.dev/doc/effective_go
 
 Go garbage collector guide
 
 https://go.dev/doc/gc-guide
+
+Go race detector
+
+https://go.dev/doc/articles/race_detector
+
+Go fuzzing
+
+https://go.dev/doc/security/fuzz/
+
+Go diagnostics
+
+https://go.dev/doc/diagnostics
+
+Go vulnerability management
+
+https://go.dev/doc/security/vuln/
+
+Rust documentation for alternative evaluation
+
+https://doc.rust-lang.org/book/
 
 Bun standalone executables
 
@@ -2636,6 +2704,6 @@ https://www.php.net/manual/en/install.fpm.configuration.php
 
 ## 29. Refinement Readiness
 
-This draft is ready for a dedicated refinement pass focused on product positioning, runtime artifact strategy, Composer compatibility, public MVP boundaries, configuration format, platform priorities, and open source governance.
+This draft is ready for a dedicated refinement pass focused on product positioning, Go package boundaries, daemon protocol design, runtime artifact strategy, Composer compatibility, public MVP boundaries, configuration format, platform priorities, and open source governance.
 
 The specification should not be converted into implementation phases until the Milestone 0 research decisions have been reviewed, because runtime provenance and existing project integration can materially change the architecture.

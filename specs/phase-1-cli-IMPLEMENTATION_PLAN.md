@@ -8,7 +8,7 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 1, Go Module And Test Harness
+Current phase: Phase 1, Go Module And Test Harness, complete
 
 Next phase: Phase 2, Machine Event Protocol And Error Contract
 
@@ -53,10 +53,10 @@ Dependencies: None
 
 Completion Criteria:
 
-* [ ] The module builds on Darwin arm64.
-* [ ] The root command is constructed without global mutable state.
-* [ ] Tests can execute the full command tree in process.
-* [ ] Core packages do not import Cobra.
+* [x] The module builds on Darwin arm64.
+* [x] The root command is constructed without global mutable state.
+* [x] Tests can execute the full command tree in process.
+* [x] Core packages do not import Cobra.
 
 ## Phase 2: Machine Event Protocol And Error Contract
 

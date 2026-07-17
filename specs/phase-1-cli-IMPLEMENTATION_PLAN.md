@@ -8,6 +8,10 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
+Current phase: Phase 1, Go Module And Test Harness
+
+Next phase: Phase 2, Machine Event Protocol And Error Contract
+
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
 ## Collaboration Rules

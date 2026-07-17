@@ -11,10 +11,11 @@ Before making product or implementation decisions, read these files in order:
 1. `START_HERE.md`
 2. `specs/elefante-project-toolchain.md`
 3. `ELEFANTE_BRAND_SETUP.md`
-4. `CONTEXT.md`
-5. `specs/phase-1-cli-technical-design.md`
-6. `specs/phase-1-cli-IMPLEMENTATION_PLAN.md`
-7. `docs/adr/`
+4. `HANDOFF_SCRIPT.md`
+5. `CONTEXT.md`
+6. `specs/phase-1-cli-technical-design.md`
+7. `specs/phase-1-cli-IMPLEMENTATION_PLAN.md`
+8. `docs/adr/`
 
 The project toolchain specification is the canonical product direction. The Phase 1 CLI technical design is the canonical implementation contract. The implementation plan defines the required execution order and validation gates. This file preserves the founding context and exact restart point.
 
@@ -489,16 +490,17 @@ Packagist does not reserve an empty vendor. Publish the first legitimate package
 
 Implementation planning is complete. Remaining brand reservations stay recorded in `ELEFANTE_BRAND_SETUP.md` and do not block local CLI implementation.
 
-1. Read `specs/phase-1-cli-technical-design.md`.
-2. Read `specs/phase-1-cli-IMPLEMENTATION_PLAN.md`.
-3. Read the accepted records in `docs/adr/`.
-4. Confirm the documentation branch is clean and review its commits against `main`.
-5. Wait for explicit approval before merging or pushing the documentation branch.
-6. After the documentation lands, fetch and prove local `main` equals `origin/main`.
-7. Create the first implementation branch from that verified base.
-8. Begin Phase 1, Go Module And Test Harness.
-9. Write the failing compiled binary test before scaffolding behavior.
-10. Complete one red, green, refactor cycle at a time and commit only after the phase verification is green.
+1. Open `HANDOFF_SCRIPT.md` and follow it as the active restart prompt.
+2. Read `specs/phase-1-cli-technical-design.md`.
+3. Read `specs/phase-1-cli-IMPLEMENTATION_PLAN.md`.
+4. Read the accepted records in `docs/adr/`.
+5. Confirm the documentation branch is clean and review its commits against `main`.
+6. Wait for explicit approval before merging or pushing the documentation branch.
+7. After the documentation lands, fetch and prove local `main` equals `origin/main`.
+8. Create the first implementation branch from that verified base.
+9. Begin Phase 1, Go Module And Test Harness.
+10. Write the failing compiled binary test before scaffolding behavior.
+11. Complete one red, green, refactor cycle at a time and commit only after the phase verification is green.
 
 ## Phase 1 Implementation Contract
 
@@ -545,6 +547,6 @@ These decisions are outside the Phase 1 implementation contract and must not del
 
 ## What Was Last Completed
 
-The latest work completed the Phase 1 implementation interview and established the final CLI architecture. The resulting artifacts define canonical terms, accepted architecture decisions, all five command contracts, the Composer compatibility boundary, providers, configuration, state, security, machine output, plan approval, errors, testing, fixtures, performance, and eighteen incremental implementation phases.
+The latest work completed the Phase 1 implementation interview, established the final CLI architecture, and created `HANDOFF_SCRIPT.md` as the exact restart prompt. The resulting artifacts define canonical terms, accepted architecture decisions, all five command contracts, the Composer compatibility boundary, providers, configuration, state, security, machine output, plan approval, errors, testing, fixtures, performance, and eighteen incremental implementation phases.
 
 No application code has been written yet.

@@ -5,18 +5,19 @@ import "errors"
 type ErrorCode string
 
 const (
-	ErrorUsage            ErrorCode = "ELEFANTE_USAGE"
-	ErrorDiscovery        ErrorCode = "ELEFANTE_DISCOVERY"
-	ErrorRequirements     ErrorCode = "ELEFANTE_REQUIREMENTS"
-	ErrorProvider         ErrorCode = "ELEFANTE_PROVIDER"
-	ErrorApprovalRequired ErrorCode = "ELEFANTE_APPROVAL_REQUIRED"
-	ErrorPlanMismatch     ErrorCode = "ELEFANTE_PLAN_MISMATCH"
-	ErrorNetwork          ErrorCode = "ELEFANTE_NETWORK"
-	ErrorTrust            ErrorCode = "ELEFANTE_TRUST"
-	ErrorSync             ErrorCode = "ELEFANTE_SYNC"
-	ErrorArtifact         ErrorCode = "ELEFANTE_ARTIFACT"
-	ErrorState            ErrorCode = "ELEFANTE_STATE"
-	ErrorInternal         ErrorCode = "ELEFANTE_INTERNAL"
+	ErrorUsage                   ErrorCode = "ELEFANTE_USAGE"
+	ErrorDiscovery               ErrorCode = "ELEFANTE_DISCOVERY"
+	ErrorDiscoveryAmbiguousRoots ErrorCode = "ELEFANTE_DISCOVERY_AMBIGUOUS_ROOTS"
+	ErrorRequirements            ErrorCode = "ELEFANTE_REQUIREMENTS"
+	ErrorProvider                ErrorCode = "ELEFANTE_PROVIDER"
+	ErrorApprovalRequired        ErrorCode = "ELEFANTE_APPROVAL_REQUIRED"
+	ErrorPlanMismatch            ErrorCode = "ELEFANTE_PLAN_MISMATCH"
+	ErrorNetwork                 ErrorCode = "ELEFANTE_NETWORK"
+	ErrorTrust                   ErrorCode = "ELEFANTE_TRUST"
+	ErrorSync                    ErrorCode = "ELEFANTE_SYNC"
+	ErrorArtifact                ErrorCode = "ELEFANTE_ARTIFACT"
+	ErrorState                   ErrorCode = "ELEFANTE_STATE"
+	ErrorInternal                ErrorCode = "ELEFANTE_INTERNAL"
 )
 
 type ErrorCategory string
@@ -123,7 +124,7 @@ func errorDefinition(code ErrorCode) (ErrorCategory, int) {
 	switch code {
 	case ErrorUsage:
 		return CategoryUsage, 2
-	case ErrorDiscovery:
+	case ErrorDiscovery, ErrorDiscoveryAmbiguousRoots:
 		return CategoryDiscovery, 3
 	case ErrorRequirements:
 		return CategoryRequirements, 4

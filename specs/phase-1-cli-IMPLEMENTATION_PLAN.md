@@ -8,9 +8,9 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 2, Machine Event Protocol And Error Contract, complete
+Current phase: Phase 3, Project And Workspace Discovery, complete
 
-Next phase: Phase 3, Project And Workspace Discovery
+Next phase: Phase 4, Composer Metadata Parsing
 
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
@@ -108,10 +108,10 @@ Dependencies: Phase 2 completed
 
 Completion Criteria:
 
-* [ ] Discovery never loads PHP or application bootstrap files.
-* [ ] Ambiguous roots produce candidate paths and a stable error code.
-* [ ] Worktrees receive distinct workspace identities.
-* [ ] Nongit Composer projects remain supported.
+* [x] Discovery never loads PHP or application bootstrap files.
+* [x] Ambiguous roots produce candidate paths and a stable error code.
+* [x] Worktrees receive distinct workspace identities.
+* [x] Nongit Composer projects remain supported.
 
 ## Phase 4: Composer Metadata Parsing
 

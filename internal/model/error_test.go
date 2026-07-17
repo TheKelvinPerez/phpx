@@ -15,6 +15,7 @@ func TestErrorCodesMapToStableCategoriesAndExitCodes(t *testing.T) {
 	}{
 		{model.ErrorUsage, model.CategoryUsage, 2},
 		{model.ErrorDiscovery, model.CategoryDiscovery, 3},
+		{model.ErrorDiscoveryAmbiguousRoots, model.CategoryDiscovery, 3},
 		{model.ErrorRequirements, model.CategoryRequirements, 4},
 		{model.ErrorProvider, model.CategoryProvider, 5},
 		{model.ErrorApprovalRequired, model.CategoryApprovalRequired, 6},

@@ -23,6 +23,14 @@ func (renderer *HumanRenderer) Started() error {
 	return nil
 }
 
+func (renderer *HumanRenderer) Fact(fact Fact) error {
+	if _, err := fmt.Fprintln(renderer.stdout, fact.Text); err != nil {
+		return fmt.Errorf("write human fact: %w", err)
+	}
+
+	return nil
+}
+
 func (renderer *HumanRenderer) Result(result Result) error {
 	if _, err := fmt.Fprintln(renderer.stdout, result.Text); err != nil {
 		return fmt.Errorf("write human result: %w", err)

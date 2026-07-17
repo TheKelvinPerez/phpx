@@ -109,9 +109,17 @@ func requestsJSON(arguments []string) bool {
 }
 
 func selectedCommand(arguments []string) string {
-	for _, argument := range arguments {
+	for index := 0; index < len(arguments); index++ {
+		argument := arguments[index]
 		if argument == "--" {
 			break
+		}
+		if argument == "--project" {
+			index++
+			continue
+		}
+		if strings.HasPrefix(argument, "--project=") {
+			continue
 		}
 		if strings.HasPrefix(argument, "-") {
 			continue

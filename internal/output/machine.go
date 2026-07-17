@@ -27,6 +27,10 @@ func (renderer *MachineRenderer) Started() error {
 	return renderer.emit(model.EventStarted, struct{}{})
 }
 
+func (renderer *MachineRenderer) Fact(fact Fact) error {
+	return renderer.emit(model.EventFact, fact.Payload)
+}
+
 func (renderer *MachineRenderer) Result(result Result) error {
 	return renderer.emit(model.EventResult, result.Payload)
 }

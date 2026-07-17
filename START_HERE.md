@@ -11,12 +11,16 @@ Before making product or implementation decisions, read these files in order:
 1. `START_HERE.md`
 2. `specs/elefante-project-toolchain.md`
 3. `ELEFANTE_BRAND_SETUP.md`
+4. `CONTEXT.md`
+5. `specs/phase-1-cli-technical-design.md`
+6. `specs/phase-1-cli-IMPLEMENTATION_PLAN.md`
+7. `docs/adr/`
 
-The specification is the canonical product direction. This file preserves the founding context, the decisions made during product discovery, and the exact restart point.
+The project toolchain specification is the canonical product direction. The Phase 1 CLI technical design is the canonical implementation contract. The implementation plan defines the required execution order and validation gates. This file preserves the founding context and exact restart point.
 
 ## Current State
 
-There is no product implementation yet. The repository currently contains product strategy, architecture, acceptance criteria, branding infrastructure, and restart context.
+There is no product implementation yet. The repository contains product strategy, the approved Phase 1 CLI technical design, architecture decisions, the test first implementation plan, acceptance criteria, branding infrastructure, and restart context.
 
 Current local project path:
 
@@ -31,6 +35,8 @@ The GitHub remote still uses the original placeholder repository:
 `git@github.com:TheKelvinPerez/phpx.git`
 
 The local folder and current documentation have been renamed to Elefante. Do not rename or transfer the GitHub repository until that external migration is explicitly requested and the destination repository strategy is confirmed.
+
+The current documentation branch contains the canonical Elefante design and is ahead of `origin/main`. Do not begin implementation from the older `main`. Land the documentation branch intentionally, verify `main` against `origin/main`, then create implementation work from that verified base.
 
 ## Tmux Resume Setup
 
@@ -481,54 +487,48 @@ Packagist does not reserve an empty vendor. Publish the first legitimate package
 
 ## Immediate Restart Checklist
 
-Brand reservation comes before implementation.
+Implementation planning is complete. Remaining brand reservations stay recorded in `ELEFANTE_BRAND_SETUP.md` and do not block local CLI implementation.
 
-1. Create and secure `elefantephp@proton.me`.
-2. Redirect `accounts@elefantephp.com` to Proton.
-3. Test the forward from an unrelated email account.
-4. Claim `elefantephp@gmail.com` if available.
-5. Create the YouTube channel `Elefante`.
-6. Claim the YouTube handle `@elefantephp`.
-7. Claim the X username `elefantephp`.
-8. Claim the Docker ID `elefantephp`.
-9. Harden GitHub and npm ownership and recovery.
-10. Continue with LinkedIn and Bluesky after the core developer surfaces are protected.
+1. Read `specs/phase-1-cli-technical-design.md`.
+2. Read `specs/phase-1-cli-IMPLEMENTATION_PLAN.md`.
+3. Read the accepted records in `docs/adr/`.
+4. Confirm the documentation branch is clean and review its commits against `main`.
+5. Wait for explicit approval before merging or pushing the documentation branch.
+6. After the documentation lands, fetch and prove local `main` equals `origin/main`.
+7. Create the first implementation branch from that verified base.
+8. Begin Phase 1, Go Module And Test Harness.
+9. Write the failing compiled binary test before scaffolding behavior.
+10. Complete one red, green, refactor cycle at a time and commit only after the phase verification is green.
 
-After those reservations, return to implementation planning for the Phase 1 technical proof.
+## Phase 1 Implementation Contract
 
-## First Implementation Planning Target
+The complete technical design lives at:
 
-The first technical proof should be narrow enough to build but structurally honest about the full vision.
+`specs/phase-1-cli-technical-design.md`
 
-It should:
+The incremental execution plan lives at:
 
-1. Run on Apple Silicon macOS.
-2. Be implemented in Go.
-3. Discover a Laravel Composer project without booting application code.
-4. Explain PHP and extension requirements.
-5. Inspect at least one host provider and one isolated provider.
-6. Produce a deterministic plan.
-7. Invoke official Composer.
-8. Run a representative Artisan command and preserve its exit code.
-9. Return human readable and structured output.
-10. Establish interfaces that can later own runtimes, services, workspaces, and tunnels.
+`specs/phase-1-cli-IMPLEMENTATION_PLAN.md`
 
-WordPress remains an important product target. Laravel is the primary Phase 1 proof because it is the founder's strongest current ecosystem and provides a demanding application workflow. Bedrock WordPress and generic Composer fixtures should remain in the conformance suite.
+The design specifies all five Phase 1 commands before implementation begins. The plan divides the work into eighteen independently testable phases. Every phase uses command level behavior tests, provider conformance, compiled binary verification, and a red, green, refactor loop.
 
-## Decisions That Remain Open
+The first implementation phase establishes the Go module, compiled binary test, thin Cobra adapter, application construction, version command, and repository verification commands. It does not begin provider or Composer behavior before the test harness is proven.
 
-1. The first host provider adapter.
-2. The first isolated provider adapter.
-3. The runtime artifact source for the first party provider.
-4. PHP FPM behind a Go controlled proxy versus FrankenPHP.
-5. The exact initial configuration schema.
-6. Whether `elefante.lock` earns inclusion during Phase 1.
-7. The exact database cloning contract.
-8. The first tunnel provider integration.
-9. The boundary between the command line and the future daemon.
-10. The timing of the GitHub repository rename and transfer.
+## Deferred Decisions
 
-These are implementation decisions, not reasons to weaken the product vision.
+The decisions needed for Phase 1 implementation are resolved. These later decisions remain intentionally deferred:
+
+1. The runtime artifact source for the first party provider.
+2. PHP FPM behind a Go controlled proxy versus FrankenPHP.
+3. The exact database cloning contract.
+4. The first tunnel provider integration.
+5. The Phase 2 daemon protocol.
+6. The committed `elefante.lock` schema.
+7. The external provider protocol.
+8. The timing of the GitHub repository rename and transfer.
+9. Container image contents and release policy.
+
+These decisions are outside the Phase 1 implementation contract and must not delay the first CLI phases.
 
 ## Repository Rules for the Next Session
 
@@ -545,6 +545,6 @@ These are implementation decisions, not reasons to weaken the product vision.
 
 ## What Was Last Completed
 
-The latest work established the Elefante brand, purchased and secured the domain, reserved the GitHub and npm namespaces, configured the ownership email forward, created the brand reservation checklist, renamed the local project identity, expanded the specification with parallel workspace and tunneling requirements, and prepared this restart context.
+The latest work completed the Phase 1 implementation interview and established the final CLI architecture. The resulting artifacts define canonical terms, accepted architecture decisions, all five command contracts, the Composer compatibility boundary, providers, configuration, state, security, machine output, plan approval, errors, testing, fixtures, performance, and eighteen incremental implementation phases.
 
 No application code has been written yet.

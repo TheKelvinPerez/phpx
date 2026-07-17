@@ -6,7 +6,7 @@
 
 **Updated:** July 17, 2026
 
-**Status:** Approved product direction, Phase 1 specification ready for implementation planning
+**Status:** Approved product direction, Phase 1 technical design and implementation plan complete
 
 **Primary implementation language:** Go
 
@@ -17,6 +17,10 @@
 **Phase 2 ambition:** A complete, open source, vertically integrated local PHP development platform that can replace Herd, Valet, Yerd, Lerd, Sail, DDEV, and fragmented local service tooling for supported workflows
 
 **Long term ambition:** One coherent Elefante interface from project checkout through local development, continuous integration, build, deployment, health verification, and rollback
+
+**Phase 1 technical design:** `specs/phase-1-cli-technical-design.md`
+
+**Phase 1 implementation plan:** `specs/phase-1-cli-IMPLEMENTATION_PLAN.md`
 
 ## 1. Product Decision
 

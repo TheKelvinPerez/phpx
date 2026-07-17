@@ -1,10 +1,10 @@
-# PHPX: The Executable Environment for Composer Projects
+# Elefante: The Executable Environment for Composer Projects
 
 ## Document Status
 
-**Version:** 3.0
+**Version:** 4.0
 
-**Updated:** July 16, 2026
+**Updated:** July 17, 2026
 
 **Status:** Approved product direction, Phase 1 specification ready for implementation planning
 
@@ -16,39 +16,39 @@
 
 **Phase 2 ambition:** A complete, open source, vertically integrated local PHP development platform that can replace Herd, Valet, Yerd, Lerd, Sail, DDEV, and fragmented local service tooling for supported workflows
 
-**Long term ambition:** One coherent PHPX interface from project checkout through local development, continuous integration, build, deployment, health verification, and rollback
+**Long term ambition:** One coherent Elefante interface from project checkout through local development, continuous integration, build, deployment, health verification, and rollback
 
 ## 1. Product Decision
 
 ### 1.1 Vision
 
-PHPX will become the one stop development and delivery platform for PHP.
+Elefante will become the one stop development and delivery platform for PHP.
 
 It will reach that destination in deliberate layers. The first release will not attempt to own every local service. It will first own the path from project metadata to a correctly executed command.
 
 The core product promise is:
 
-> Composer describes what a PHP project needs. PHPX makes the environment satisfy those requirements, then runs the project correctly.
+> Composer describes what a PHP project needs. Elefante makes the environment satisfy those requirements, then runs the project correctly.
 
 The initial experience should be:
 
 ```console
 git clone <repository>
 cd <repository>
-phpx doctor
-phpx sync
-phpx run -- php artisan test
+elefante doctor
+elefante sync
+elefante run -- php artisan test
 ```
 
-PHPX must preserve Composer as the canonical PHP package manager. PHPX manages the executable environment around Composer, including PHP selection, extension coordination, Composer acquisition, environment inspection, provider selection, command execution, diagnostics, isolated tools, and continuous integration parity.
+Elefante must preserve Composer as the canonical PHP package manager. Elefante manages the executable environment around Composer, including PHP selection, extension coordination, Composer acquisition, environment inspection, provider selection, command execution, diagnostics, isolated tools, and continuous integration parity.
 
 ### 1.2 Strategic Sequence
 
-PHPX will use a land and expand strategy.
+Elefante will use a land and expand strategy.
 
 #### Phase 1: Project Execution Layer
 
-PHPX provides one Composer aware interface across existing PHP environments.
+Elefante provides one Composer aware interface across existing PHP environments.
 
 Phase 1 includes:
 
@@ -63,11 +63,11 @@ Phase 1 includes:
 9. Generic Composer compatibility.
 10. Continuous integration execution using the same project interpretation.
 
-Phase 1 succeeds when developers adopt PHPX as the command they use to understand, prepare, and run PHP projects.
+Phase 1 succeeds when developers adopt Elefante as the command they use to understand, prepare, and run PHP projects.
 
 #### Phase 2: Vertically Integrated Local Platform
 
-PHPX adds a complete first party local environment provider and progressively replaces the external providers used during Phase 1.
+Elefante adds a complete first party local environment provider and progressively replaces the external providers used during Phase 1.
 
 Phase 2 includes:
 
@@ -83,12 +83,14 @@ Phase 2 includes:
 10. A graphical interface with complete command line and API parity.
 11. Migration assistance from Herd, Valet, Yerd, Lerd, Sail, DDEV, and common manual environments.
 12. Native local performance where safe, with explicit isolated fallbacks where required.
+13. First class parallel workspaces for branches and Git worktrees.
+14. Provider backed sharing and tunneling, with a path toward a first party tunnel network.
 
-Phase 2 succeeds when a supported developer can install PHPX on a clean machine and use it as the only local PHP environment product.
+Phase 2 succeeds when a supported developer can install Elefante on a clean machine and use it as the only local PHP environment product.
 
 #### Phase 3: Production Delivery Platform
 
-PHPX extends the project contract from local and continuous integration environments into production delivery.
+Elefante extends the project contract from local and continuous integration environments into production delivery.
 
 Phase 3 includes:
 
@@ -100,7 +102,7 @@ Phase 3 includes:
 6. Health checks, release history, rollback, and auditability.
 7. Production diagnostics using the same project model as local development.
 
-Phase 3 succeeds when PHPX provides one coherent workflow from checkout to production without requiring PHPX to become the only possible hosting provider.
+Phase 3 succeeds when Elefante provides one coherent workflow from checkout to production without requiring Elefante to become the only possible hosting provider.
 
 ### 1.3 Why the Entry Wedge Changed
 
@@ -108,16 +110,16 @@ The original specification treated the complete local environment as the first p
 
 Herd now has a substantial command line interface and committed project configuration. DDEV already provides mature cross platform project configuration and automation. Yerd provides an open source native local environment. Lerd provides an open source shared Podman environment with committed configuration and broad framework support.
 
-PHPX should not enter by recreating capabilities that these products already provide. It should enter at the layer they do not share: one Composer aware execution contract across environments.
+Elefante should not enter by recreating capabilities that these products already provide. It should enter at the layer they do not share: one Composer aware execution contract across environments.
 
 The current market creates two opportunities:
 
 1. A provider neutral project execution layer is not yet established as the common PHP workflow.
-2. Once PHPX owns that workflow, it can introduce a first party provider without forcing users to learn a new interface or migrate every project at once.
+2. Once Elefante owns that workflow, it can introduce a first party provider without forcing users to learn a new interface or migrate every project at once.
 
 ### 1.4 Positioning
 
-PHPX is:
+Elefante is:
 
 1. The executable environment layer around Composer.
 2. A Composer aware project resolver and runner.
@@ -125,7 +127,7 @@ PHPX is:
 4. A path from fragmented environments toward one vertically integrated platform.
 5. A command line first product that is safe for scripts, continuous integration, editors, and future graphical clients.
 
-PHPX is not:
+Elefante is not:
 
 1. A Composer replacement.
 2. A new PHP package ecosystem.
@@ -135,7 +137,7 @@ PHPX is not:
 6. A deployment platform during Phase 1.
 7. A graphical application during Phase 1.
 
-PHPX should not be marketed as “uv for PHP.” The useful lesson from uv is the integrated experience of install, sync, run, tools, caching, and compatibility. Composer already owns PHP package resolution and must remain the dependency authority.
+Elefante can be explained as “the uv of PHP” when the comparison is qualified correctly. The useful lesson from uv is the integrated experience of install, sync, run, tools, caching, and compatibility. Elefante goes further into local runtime, services, project isolation, and parallel development. Composer already owns PHP package resolution and remains the dependency authority.
 
 ### 1.5 Product Tagline
 
@@ -145,7 +147,7 @@ The recommended initial tagline is:
 
 The recommended explanatory line is:
 
-> PHPX turns Composer requirements into an executable environment.
+> Elefante turns Composer requirements into an executable environment.
 
 ## 2. Problem Definition
 
@@ -202,9 +204,9 @@ The target job is:
 
 > When I clone or enter a PHP project, I want one command to understand its requirements, explain any mismatch, prepare a compatible environment, and run the requested command without undocumented machine setup.
 
-### 2.4 Existing Strengths That PHPX Must Preserve
+### 2.4 Existing Strengths That Elefante Must Preserve
 
-PHPX must build around the parts of the ecosystem that already work.
+Elefante must build around the parts of the ecosystem that already work.
 
 1. Composer remains the package dependency authority.
 2. PIE remains the preferred extension installer where it is supported.
@@ -212,7 +214,7 @@ PHPX must build around the parts of the ecosystem that already work.
 4. WP CLI remains the WordPress command interface.
 5. Framework supplied test and development commands retain their semantics.
 6. Existing local environment providers remain usable.
-7. Existing projects remain usable without PHPX.
+7. Existing projects remain usable without Elefante.
 
 ### 2.5 Claims That Still Require Validation
 
@@ -222,7 +224,7 @@ The following claims are plausible but not yet sufficiently proven:
 2. Exact runtime patch locking provides enough team value to justify another committed lock file.
 3. A shared native database topology is preferred over isolated project services by most target teams.
 4. Windows users will accept platform specific differences behind a common interface.
-5. Deployment should become a first party PHPX engine instead of a provider integration layer.
+5. Deployment should become a first party Elefante engine instead of a provider integration layer.
 
 These questions must be answered through prototypes, interviews, compatibility fixtures, and published benchmarks rather than assumption.
 
@@ -232,17 +234,17 @@ These questions must be answered through prototypes, interviews, compatibility f
 
 `composer.json` and `composer.lock` remain the source of truth for PHP package dependencies, dependency resolution, autoloading, Composer plugins, Composer scripts, repository authentication, and package installation semantics.
 
-PHPX must invoke the official Composer implementation during Phase 1. Native Composer acceleration may be explored later only when compatibility is measurable and transparent fallback remains available.
+Elefante must invoke the official Composer implementation during Phase 1. Native Composer acceleration may be explored later only when compatibility is measurable and transparent fallback remains available.
 
 ### 3.2 Useful Without Migration
 
-A Composer project must receive useful PHPX diagnostics and execution behavior without adding a PHPX manifest or restructuring its repository.
+A Composer project must receive useful Elefante diagnostics and execution behavior without adding a Elefante manifest or restructuring its repository.
 
-PHPX must derive intent from established files before asking a project to declare new intent.
+Elefante must derive intent from established files before asking a project to declare new intent.
 
-### 3.3 Projects Remain Usable Without PHPX
+### 3.3 Projects Remain Usable Without Elefante
 
-Removing PHPX from a machine must not make a project structurally unusable. A developer with a compatible PHP runtime, Composer, and required services must still be able to use normal project commands.
+Removing Elefante from a machine must not make a project structurally unusable. A developer with a compatible PHP runtime, Composer, and required services must still be able to use normal project commands.
 
 ### 3.4 One Interface, Multiple Providers
 
@@ -250,11 +252,11 @@ The user facing interface must remain consistent while environment providers cha
 
 Phase 1 integrates with providers. Phase 2 adds a first party provider. Phase 3 adds deployment providers.
 
-Provider differences must be explained instead of hidden. PHPX must not claim two providers are equivalent when their isolation, operating system, services, or runtime semantics differ.
+Provider differences must be explained instead of hidden. Elefante must not claim two providers are equivalent when their isolation, operating system, services, or runtime semantics differ.
 
 ### 3.5 Vertical Integration in Layers
 
-PHPX will vertically integrate through a staged ownership model.
+Elefante will vertically integrate through a staged ownership model.
 
 1. Phase 1 owns interpretation, planning, synchronization, execution, and diagnostics.
 2. Phase 2 owns the complete supported local environment.
@@ -264,7 +266,7 @@ Later ambition must not expand the active implementation scope of an earlier pha
 
 ### 3.6 Explain Every Decision
 
-PHPX must be able to explain:
+Elefante must be able to explain:
 
 1. Which project root it selected.
 2. Which framework or project type it detected.
@@ -278,7 +280,7 @@ PHPX must be able to explain:
 
 ### 3.7 Plan Before Mutation
 
-Read only discovery and planning must be available before PHPX modifies a machine, project, provider, service, or lock file.
+Read only discovery and planning must be available before Elefante modifies a machine, project, provider, service, or lock file.
 
 Elevated operations and system trust changes require explicit approval. Noninteractive mutation requires an explicit confirmation flag.
 
@@ -292,7 +294,7 @@ The Phase 2 graphical application must consume the same daemon API and must not 
 
 ### 3.9 Compatibility Before Replacement
 
-PHPX must delegate to existing implementations when it cannot preserve their semantics.
+Elefante must delegate to existing implementations when it cannot preserve their semantics.
 
 Unsupported behavior must fail clearly or use a declared fallback. It must never appear successful after performing only a partial approximation.
 
@@ -300,11 +302,11 @@ Unsupported behavior must fail clearly or use a declared fallback. It must never
 
 Downloaded runtimes, extensions, Composer executables, tools, services, and updates must have verifiable provenance and checksums.
 
-Release signing, software bills of materials, minimal privileges, auditable artifact metadata, and rollback must be designed before PHPX distributes executable artifacts broadly.
+Release signing, software bills of materials, minimal privileges, auditable artifact metadata, and rollback must be designed before Elefante distributes executable artifacts broadly.
 
 ### 3.11 Go Owns the Control Plane
 
-Go is the default implementation language for the PHPX command line, resolver, provider coordination, structured output, caching, process execution, and future daemon.
+Go is the default implementation language for the Elefante command line, resolver, provider coordination, structured output, caching, process execution, and future daemon.
 
 PHP remains the correct runtime for Composer, Composer plugins, project scripts, Artisan, WP CLI, and PHP based tools.
 
@@ -355,101 +357,101 @@ The Phase 2 local platform must provide first class support for:
 
 ```text
 Developer enters repository
-PHPX discovers project files without executing project code
-PHPX derives PHP and extension requirements
-PHPX inspects available providers
-PHPX explains compatibility, conflicts, and missing capabilities
+Elefante discovers project files without executing project code
+Elefante derives PHP and extension requirements
+Elefante inspects available providers
+Elefante explains compatibility, conflicts, and missing capabilities
 Developer receives an actionable plan
 ```
 
 Primary command:
 
 ```console
-phpx doctor
+elefante doctor
 ```
 
 ### 5.2 Preview Environment Preparation
 
 ```text
 Developer requests a plan
-PHPX chooses a provider according to explicit and discovered intent
-PHPX lists runtime, extension, Composer, dependency, and command actions
-PHPX identifies machine changes and project changes separately
+Elefante chooses a provider according to explicit and discovered intent
+Elefante lists runtime, extension, Composer, dependency, and command actions
+Elefante identifies machine changes and project changes separately
 No mutation occurs
 ```
 
 Primary command:
 
 ```console
-phpx plan
+elefante plan
 ```
 
 ### 5.3 Synchronize a Project
 
 ```text
 Developer approves synchronization
-PHPX prepares or selects the provider environment
-PHPX acquires or selects a compatible PHP runtime
-PHPX coordinates required extensions
-PHPX acquires or selects Composer
-PHPX invokes Composer with normal semantics
-PHPX verifies the resulting platform requirements
-PHPX reports the synchronized environment
+Elefante prepares or selects the provider environment
+Elefante acquires or selects a compatible PHP runtime
+Elefante coordinates required extensions
+Elefante acquires or selects Composer
+Elefante invokes Composer with normal semantics
+Elefante verifies the resulting platform requirements
+Elefante reports the synchronized environment
 ```
 
 Primary command:
 
 ```console
-phpx sync
+elefante sync
 ```
 
 ### 5.4 Run a Project Command
 
 ```text
 Developer supplies an argument vector
-PHPX resolves the project and provider
-PHPX verifies that the environment is usable
-PHPX executes the command without shell string interpolation
-PHPX streams output and returns the child exit code
+Elefante resolves the project and provider
+Elefante verifies that the environment is usable
+Elefante executes the command without shell string interpolation
+Elefante streams output and returns the child exit code
 ```
 
 Primary command:
 
 ```console
-phpx run -- php artisan test
+elefante run -- php artisan test
 ```
 
 ### 5.5 Run an Isolated Tool
 
 ```text
 Developer names a Composer package that exposes an executable
-PHPX resolves an isolated tool environment
-PHPX reuses verified cached artifacts where possible
-PHPX executes the tool without modifying project dependencies
-PHPX removes disposable state according to cache policy
+Elefante resolves an isolated tool environment
+Elefante reuses verified cached artifacts where possible
+Elefante executes the tool without modifying project dependencies
+Elefante removes disposable state according to cache policy
 ```
 
 Primary command:
 
 ```console
-phpx tool run phpstan/phpstan -- analyse
+elefante tool run phpstan/phpstan -- analyse
 ```
 
 ### 5.6 Use the Same Interpretation in Continuous Integration
 
 ```text
-Continuous integration installs the PHPX binary
-PHPX reads the same Composer metadata and optional PHPX configuration
-PHPX selects the continuous integration provider
-PHPX synchronizes in noninteractive mode
-PHPX executes tests and returns stable exit codes
+Continuous integration installs the Elefante binary
+Elefante reads the same Composer metadata and optional Elefante configuration
+Elefante selects the continuous integration provider
+Elefante synchronizes in noninteractive mode
+Elefante executes tests and returns stable exit codes
 ```
 
 Primary commands:
 
 ```console
-phpx sync --non-interactive --frozen
-phpx run -- php artisan test
+elefante sync --non-interactive --frozen
+elefante run -- php artisan test
 ```
 
 ## 6. Phase 1 Command Line Interface
@@ -458,7 +460,7 @@ phpx run -- php artisan test
 
 The initial public command surface contains five primary commands.
 
-#### `phpx doctor`
+#### `elefante doctor`
 
 Inspects project intent, the current machine, available providers, runtime compatibility, extensions, Composer, and likely execution blockers.
 
@@ -476,7 +478,7 @@ Required output includes:
 8. Blocking conflicts.
 9. Recommended next command.
 
-#### `phpx plan`
+#### `elefante plan`
 
 Produces the ordered action plan that `sync` would execute.
 
@@ -491,7 +493,7 @@ The plan must distinguish:
 5. Commands that may execute project supplied code.
 6. Cache reads and downloads.
 
-#### `phpx sync`
+#### `elefante sync`
 
 Brings the selected executable environment into agreement with project requirements.
 
@@ -502,18 +504,18 @@ Brings the selected executable environment into agreement with project requireme
 3. Select or install Composer.
 4. Invoke `composer install`.
 5. Verify installed platform requirements.
-6. Write PHPX local state.
-7. Write an optional PHPX lock only when explicitly requested or required by repository policy.
+6. Write Elefante local state.
+7. Write an optional Elefante lock only when explicitly requested or required by repository policy.
 
-#### `phpx run -- <command>`
+#### `elefante run -- <command>`
 
 Executes a command inside the selected project environment.
 
-The separator is required whenever command arguments could be confused with PHPX flags.
+The separator is required whenever command arguments could be confused with Elefante flags.
 
 The initial implementation must preserve the child process exit code and signal behavior where the operating system permits it.
 
-#### `phpx tool run <package> -- <arguments>`
+#### `elefante tool run <package> -- <arguments>`
 
 Runs a Composer distributed command line tool in an isolated cached environment without adding it to project dependencies.
 
@@ -537,19 +539,19 @@ All applicable commands must support:
 The following shortcuts may be added after the five primary commands are stable:
 
 ```console
-phpx composer <arguments>
-phpx artisan <arguments>
-phpx wp <arguments>
-phpx test
+elefante composer <arguments>
+elefante artisan <arguments>
+elefante wp <arguments>
+elefante test
 ```
 
-Each shortcut must compile to the same execution path as `phpx run`. Shortcuts must not introduce separate environment logic.
+Each shortcut must compile to the same execution path as `elefante run`. Shortcuts must not introduce separate environment logic.
 
 ## 7. Phase 1 Project Discovery
 
 ### 7.1 Discovery Inputs
 
-PHPX must recognize, when present:
+Elefante must recognize, when present:
 
 1. `composer.json`.
 2. `composer.lock`.
@@ -566,7 +568,7 @@ PHPX must recognize, when present:
 13. `docker-compose.yml` and `compose.yaml`.
 14. Laravel Sail files.
 15. `mise.toml` and `.tool-versions`.
-16. Optional PHPX configuration.
+16. Optional Elefante configuration.
 
 ### 7.2 Discovery Safety
 
@@ -581,7 +583,7 @@ Discovery must not:
 
 ### 7.3 Project Root Selection
 
-PHPX must distinguish:
+Elefante must distinguish:
 
 1. Repository root.
 2. Composer project root.
@@ -590,14 +592,14 @@ PHPX must distinguish:
 5. Tool working directory.
 6. Monorepo or workspace boundaries.
 
-Ambiguous roots must be explained and require an explicit choice. PHPX must not silently select a nested project when multiple valid roots exist.
+Ambiguous roots must be explained and require an explicit choice. Elefante must not silently select a nested project when multiple valid roots exist.
 
 ### 7.4 Intent Precedence
 
 The initial precedence is:
 
 1. Explicit command line arguments.
-2. Optional committed PHPX configuration.
+2. Optional committed Elefante configuration.
 3. Composer requirements and lock metadata.
 4. Standard version files.
 5. Recognized provider configuration.
@@ -632,23 +634,23 @@ The normalized plan is the stable center of the architecture. Human output, JSON
 
 ### 8.2 PHP Requirement Resolution
 
-PHPX must consider:
+Elefante must consider:
 
 1. Root Composer PHP constraints.
 2. Locked package PHP constraints.
 3. Composer platform configuration.
 4. `.php-version`.
-5. Optional PHPX policy.
+5. Optional Elefante policy.
 6. Provider availability.
 7. Operating system and architecture.
 
-PHPX must distinguish an actual project requirement from a Composer platform emulation setting.
+Elefante must distinguish an actual project requirement from a Composer platform emulation setting.
 
-PHPX must never choose a runtime that violates locked package requirements merely because the root requirement appears compatible.
+Elefante must never choose a runtime that violates locked package requirements merely because the root requirement appears compatible.
 
 ### 8.3 Extension Requirement Resolution
 
-PHPX must identify required `ext-*` platform packages from Composer metadata.
+Elefante must identify required `ext-*` platform packages from Composer metadata.
 
 For each extension, the plan must report:
 
@@ -662,7 +664,7 @@ PIE should be used where it is compatible and provides the required package. Pro
 
 ### 8.4 Composer Selection
 
-PHPX must use the official Composer executable.
+Elefante must use the official Composer executable.
 
 The selection policy must support:
 
@@ -671,22 +673,22 @@ The selection policy must support:
 3. A compatible provider supplied Composer executable.
 4. A compatible system Composer executable as a fallback.
 
-PHPX must expose the exact Composer executable and version used.
+Elefante must expose the exact Composer executable and version used.
 
 ### 8.5 Configuration and Locking
 
-Phase 1 must not require `phpx.toml` or `phpx.lock` for basic use.
+Phase 1 must not require `elefante.toml` or `elefante.lock` for basic use.
 
-An optional `phpx.toml` may be introduced for intent that established project files cannot express, including:
+An optional `elefante.toml` may be introduced for intent that established project files cannot express, including:
 
 1. Allowed or preferred providers.
-2. PHPX task aliases.
+2. Elefante task aliases.
 3. Project specific environment policy.
 4. Continuous integration policy.
 5. Optional extension policy.
 6. Monorepo project selection.
 
-An optional `phpx.lock` may be introduced only when it locks information not already owned by `composer.lock`, including:
+An optional `elefante.lock` may be introduced only when it locks information not already owned by `composer.lock`, including:
 
 1. PHP runtime artifact identity and checksum.
 2. Composer executable version and checksum.
@@ -694,7 +696,7 @@ An optional `phpx.lock` may be introduced only when it locks information not alr
 4. Isolated tool package versions.
 5. Provider protocol version when required for reproducibility.
 
-`phpx.lock` must never duplicate the Composer package dependency graph.
+`elefante.lock` must never duplicate the Composer package dependency graph.
 
 Exact runtime locking must earn adoption through user validation before it becomes a default repository artifact.
 
@@ -704,7 +706,7 @@ Exact runtime locking must earn adoption through user validation before it becom
 
 An environment provider turns a normalized execution plan into an executable process environment.
 
-Providers let PHPX deliver one interface before PHPX owns the complete local stack.
+Providers let Elefante deliver one interface before Elefante owns the complete local stack.
 
 ### 9.2 Required Provider Capabilities
 
@@ -728,7 +730,7 @@ The technical proof must support two different execution topologies:
 1. A host or native provider.
 2. An isolated provider such as DDEV or another container based environment.
 
-The first host provider may use an existing system runtime or a documented provider interface. Selection among Herd, Yerd, Lerd, mise, system packages, and an early PHPX artifact provider requires a focused artifact and integration spike.
+The first host provider may use an existing system runtime or a documented provider interface. Selection among Herd, Yerd, Lerd, mise, system packages, and an early Elefante artifact provider requires a focused artifact and integration spike.
 
 The proof must not depend on undocumented private APIs.
 
@@ -737,7 +739,7 @@ The proof must not depend on undocumented private APIs.
 Provider selection follows this order:
 
 1. Explicit `--provider` argument.
-2. Committed PHPX provider policy when present.
+2. Committed Elefante provider policy when present.
 3. Recognized project provider configuration.
 4. Compatible provider already associated with the project.
 5. Configured user default.
@@ -770,7 +772,7 @@ An external executable provider protocol may be introduced after the internal in
 
 ### 10.1 Synchronization Sequence
 
-`phpx sync` must execute an explicit state transition:
+`elefante sync` must execute an explicit state transition:
 
 ```text
 Discover project
@@ -790,7 +792,7 @@ Report final environment
 
 ### 10.2 Composer Semantics
 
-PHPX must preserve:
+Elefante must preserve:
 
 1. Composer authentication.
 2. Composer plugins.
@@ -801,11 +803,11 @@ PHPX must preserve:
 7. Exit codes.
 8. Standard flags such as `--no-dev`, `--no-scripts`, and `--prefer-dist`.
 
-PHPX must clearly state when `composer install` can execute project supplied or dependency supplied code.
+Elefante must clearly state when `composer install` can execute project supplied or dependency supplied code.
 
 ### 10.3 Command Execution
 
-PHPX must pass commands as argument vectors, not interpolated shell strings.
+Elefante must pass commands as argument vectors, not interpolated shell strings.
 
 The execution layer must define:
 
@@ -838,7 +840,7 @@ The tool runner must:
 Example:
 
 ```console
-phpx tool run "phpstan/phpstan:^2" -- analyse
+elefante tool run "phpstan/phpstan:^2" -- analyse
 ```
 
 ### 10.5 Cache Model
@@ -905,10 +907,10 @@ The Symfony adapter must:
 
 ### 12.1 Trust Boundaries
 
-PHPX must distinguish:
+Elefante must distinguish:
 
-1. Trusted PHPX code.
-2. Verified PHPX artifacts.
+1. Trusted Elefante code.
+2. Verified Elefante artifacts.
 3. Provider executables.
 4. Composer and Composer plugins.
 5. Project supplied code and scripts.
@@ -919,7 +921,7 @@ PHPX must distinguish:
 
 `doctor` and `plan` must not execute project code.
 
-If a provider cannot inspect state without mutation or project execution, PHPX must report that limitation before calling it.
+If a provider cannot inspect state without mutation or project execution, Elefante must report that limitation before calling it.
 
 ### 12.3 Artifact Verification
 
@@ -937,9 +939,9 @@ Downloads must use atomic installation and must not become executable before ver
 
 ### 12.4 Secret Handling
 
-PHPX must redact likely secrets from human and JSON diagnostic output.
+Elefante must redact likely secrets from human and JSON diagnostic output.
 
-PHPX must not copy production secrets into local configuration or committed project files.
+Elefante must not copy production secrets into local configuration or committed project files.
 
 Provider commands that may expose secrets require output filtering and conformance tests.
 
@@ -947,29 +949,29 @@ Provider commands that may expose secrets require output filtering and conforman
 
 Phase 1 must not require a persistent privileged daemon.
 
-Any elevated package installation must be visible in the plan and explicitly approved. PHPX must prefer user scoped installation where practical.
+Any elevated package installation must be visible in the plan and explicitly approved. Elefante must prefer user scoped installation where practical.
 
 ## 13. Phase 1 Functional Requirements
 
 ### 13.1 Discovery
 
-**FR 1.1:** PHPX must discover a Composer project from any descendant directory.
+**FR 1.1:** Elefante must discover a Composer project from any descendant directory.
 
-**FR 1.2:** PHPX must detect Laravel applications and Laravel packages without booting them.
+**FR 1.2:** Elefante must detect Laravel applications and Laravel packages without booting them.
 
-**FR 1.3:** PHPX must support generic Composer repositories without framework assumptions.
+**FR 1.3:** Elefante must support generic Composer repositories without framework assumptions.
 
-**FR 1.4:** PHPX must report ambiguous project roots instead of choosing silently.
+**FR 1.4:** Elefante must report ambiguous project roots instead of choosing silently.
 
 **FR 1.5:** Discovery must not execute project supplied code.
 
 ### 13.2 Resolution
 
-**FR 2.1:** PHPX must derive PHP constraints from Composer metadata.
+**FR 2.1:** Elefante must derive PHP constraints from Composer metadata.
 
-**FR 2.2:** PHPX must derive required extensions from Composer metadata.
+**FR 2.2:** Elefante must derive required extensions from Composer metadata.
 
-**FR 2.3:** PHPX must detect conflicts among Composer metadata, version files, PHPX policy, and provider state.
+**FR 2.3:** Elefante must detect conflicts among Composer metadata, version files, Elefante policy, and provider state.
 
 **FR 2.4:** Every selected value must include an explanation source.
 
@@ -977,39 +979,39 @@ Any elevated package installation must be visible in the plan and explicitly app
 
 ### 13.3 Providers
 
-**FR 3.1:** PHPX must select a provider explicitly or deterministically.
+**FR 3.1:** Elefante must select a provider explicitly or deterministically.
 
-**FR 3.2:** PHPX must report provider capabilities before mutation.
+**FR 3.2:** Elefante must report provider capabilities before mutation.
 
 **FR 3.3:** The technical proof must execute through at least one host topology and one isolated topology.
 
-**FR 3.4:** Provider failures must map to stable PHPX error categories while retaining useful provider context.
+**FR 3.4:** Provider failures must map to stable Elefante error categories while retaining useful provider context.
 
 ### 13.4 Synchronization
 
-**FR 4.1:** `phpx plan` must show the actions `phpx sync` would perform.
+**FR 4.1:** `elefante plan` must show the actions `elefante sync` would perform.
 
-**FR 4.2:** `phpx sync` must use the official Composer implementation.
+**FR 4.2:** `elefante sync` must use the official Composer implementation.
 
-**FR 4.3:** `phpx sync --frozen` must not change Composer or PHPX lock files.
+**FR 4.3:** `elefante sync --frozen` must not change Composer or Elefante lock files.
 
-**FR 4.4:** `phpx sync --offline` must fail before network access when required artifacts are missing.
+**FR 4.4:** `elefante sync --offline` must fail before network access when required artifacts are missing.
 
-**FR 4.5:** Repeating `phpx sync` against an already synchronized project must be safe and materially faster than initial synchronization.
+**FR 4.5:** Repeating `elefante sync` against an already synchronized project must be safe and materially faster than initial synchronization.
 
 ### 13.5 Execution
 
-**FR 5.1:** `phpx run` must execute the supplied argument vector inside the selected environment.
+**FR 5.1:** `elefante run` must execute the supplied argument vector inside the selected environment.
 
-**FR 5.2:** `phpx run` must preserve the child exit code.
+**FR 5.2:** `elefante run` must preserve the child exit code.
 
-**FR 5.3:** PHPX must stream command output without withholding normal interactive feedback.
+**FR 5.3:** Elefante must stream command output without withholding normal interactive feedback.
 
-**FR 5.4:** PHPX must support cancellation and signal forwarding on supported operating systems.
+**FR 5.4:** Elefante must support cancellation and signal forwarding on supported operating systems.
 
 ### 13.6 Tools
 
-**FR 6.1:** `phpx tool run` must not modify project Composer dependencies.
+**FR 6.1:** `elefante tool run` must not modify project Composer dependencies.
 
 **FR 6.2:** Tool package versions and runtime requirements must be visible.
 
@@ -1029,7 +1031,7 @@ Any elevated package installation must be visible in the plan and explicitly app
 
 ### 14.1 Performance
 
-1. The PHPX binary should start fast enough that wrapper use does not make common commands feel materially slower.
+1. The Elefante binary should start fast enough that wrapper use does not make common commands feel materially slower.
 2. Warm discovery should reuse content validated metadata.
 3. No daemon is required for Phase 1.
 4. Repeated commands must not scan unrelated parent directories or entire home directories.
@@ -1041,7 +1043,7 @@ Numeric thresholds must be established from baseline measurements before the pub
 
 1. Interrupted downloads and installations must recover safely.
 2. Partial provider mutations must be diagnosed on the next run.
-3. Local PHPX state must use atomic writes.
+3. Local Elefante state must use atomic writes.
 4. A failed command must not be reported as a successful synchronization.
 5. Provider output changes must be covered by fixtures or version checks.
 
@@ -1049,7 +1051,7 @@ Numeric thresholds must be established from baseline measurements before the pub
 
 The architecture must support macOS, Linux, and Windows.
 
-The technical proof may begin on macOS arm64, followed by Linux continuous integration. Public cross platform claims require real conformance testing on each claimed platform.
+The first supported development target is Apple Silicon on macOS, beginning with the founder's M1 Max. Linux follows because the Go control plane and Unix runtime model provide the closest crossover. Windows follows after the macOS and Linux contracts are stable. Public cross platform claims require real conformance testing on each claimed platform.
 
 Identical user facing commands do not require identical operating system internals.
 
@@ -1094,15 +1096,15 @@ Identical user facing commands do not require identical operating system interna
 
 ### 15.3 Explicitly Outside Phase 1
 
-1. A PHPX web server.
-2. A PHPX DNS service.
-3. PHPX managed TLS certificates.
-4. PHPX managed databases, cache, mail, search, or object storage.
-5. A persistent PHPX daemon.
+1. A Elefante web server.
+2. A Elefante DNS service.
+3. Elefante managed TLS certificates.
+4. Elefante managed databases, cache, mail, search, or object storage.
+5. A persistent Elefante daemon.
 6. A graphical interface.
 7. First party queue and scheduler supervision.
 8. Deployment and rollback.
-9. Mandatory PHPX project configuration.
+9. Mandatory Elefante project configuration.
 10. A native Composer replacement.
 11. Complete Windows local environment ownership.
 
@@ -1113,8 +1115,8 @@ These are deferred product capabilities, not rejected ambitions.
 ### 16.1 Technical Proof
 
 * [ ] A Laravel repository can be inspected without executing project code.
-* [ ] PHPX explains the PHP requirement and required extensions with source files.
-* [ ] `phpx plan` reports the provider, runtime, Composer, and dependency actions before mutation.
+* [ ] Elefante explains the PHP requirement and required extensions with source files.
+* [ ] `elefante plan` reports the provider, runtime, Composer, and dependency actions before mutation.
 * [ ] The same Laravel test command runs through a host provider and an isolated provider.
 * [ ] The official Composer implementation performs dependency installation.
 * [ ] Child process exit codes are preserved.
@@ -1128,11 +1130,11 @@ These are deferred product capabilities, not rejected ambitions.
 * [ ] A generic Composer library completes the same core workflow.
 * [ ] A Bedrock WordPress project completes the Composer workflow and can invoke WP CLI.
 * [ ] A Symfony project completes the Composer workflow and can invoke its console.
-* [ ] `phpx tool run` executes at least three representative tools without modifying project dependencies.
+* [ ] `elefante tool run` executes at least three representative tools without modifying project dependencies.
 * [ ] Noninteractive and JSON workflows are documented and tested.
 * [ ] Offline and frozen failure behavior is tested.
 * [ ] Installation artifacts include checksums and release provenance.
-* [ ] Published benchmarks compare direct commands with PHPX warm and cold command overhead.
+* [ ] Published benchmarks compare direct commands with Elefante warm and cold command overhead.
 
 ### 16.3 Adoption Gate for Phase 2
 
@@ -1149,23 +1151,23 @@ Phase 2 implementation should begin only after Phase 1 demonstrates:
 
 ### 17.1 Goal
 
-Phase 2 makes PHPX a complete local PHP development environment.
+Phase 2 makes Elefante a complete local PHP development environment.
 
 The target experience is:
 
 ```console
-phpx install
+elefante install
 cd <project>
-phpx sync
-phpx up
-phpx open
+elefante sync
+elefante up
+elefante open
 ```
 
-After PHPX installation, a supported project should not require Herd, Valet, Yerd, Lerd, DDEV, Sail, Local, ServBay, Laragon, a separate database application, a separate certificate application, or manual web server configuration.
+After Elefante installation, a supported project should not require Herd, Valet, Yerd, Lerd, DDEV, Sail, Local, ServBay, Laragon, a separate database application, a separate certificate application, or manual web server configuration.
 
 ### 17.2 Phase 2 Ownership
 
-PHPX owns:
+Elefante owns:
 
 1. PHP runtime acquisition and selection.
 2. Runtime artifact verification and updates.
@@ -1192,7 +1194,7 @@ Composer continues to own PHP package dependencies.
 
 Phase 2 should be evaluated as a replacement, not merely another option.
 
-For supported workflows, PHPX must match or exceed the important capabilities users rely on in:
+For supported workflows, Elefante must match or exceed the important capabilities users rely on in:
 
 1. Herd and Valet for native speed, site linking, PHP selection, domains, and TLS.
 2. Yerd for open source native services and efficient local operation.
@@ -1201,7 +1203,7 @@ For supported workflows, PHPX must match or exceed the important capabilities us
 5. Sail for Laravel supplied service conventions.
 6. Local for approachable WordPress site and database workflows.
 
-PHPX does not need identical implementation internals. It must satisfy the underlying jobs with a more coherent interface.
+Elefante does not need identical implementation internals. It must satisfy the underlying jobs with a more coherent interface.
 
 ## 18. Phase 2 Architecture
 
@@ -1249,7 +1251,7 @@ The first party provider must support:
 7. Architecture specific builds.
 8. Clear extension ABI compatibility.
 
-The runtime strategy may use PHPX built artifacts, verified upstream artifacts, or a combination. No artifact source may be treated as permanent until licensing, provenance, update cadence, and security response are validated.
+The runtime strategy may use Elefante built artifacts, verified upstream artifacts, or a combination. No artifact source may be treated as permanent until licensing, provenance, update cadence, and security response are validated.
 
 ### 18.4 Extension Management
 
@@ -1282,7 +1284,7 @@ The exact server implementation is a Phase 2 architecture decision. PHP FPM behi
 
 ### 18.6 DNS and Domains
 
-PHPX should use `.test` as the default local top level domain.
+Elefante should use `.test` as the default local top level domain.
 
 The platform must support:
 
@@ -1296,7 +1298,7 @@ The platform must support:
 
 ### 18.7 Trusted TLS
 
-PHPX must provide:
+Elefante must provide:
 
 1. A local certificate authority.
 2. Explicit trust installation.
@@ -1326,7 +1328,7 @@ Projects requiring incompatible versions or stronger isolation may receive a sep
 
 ### 18.9 Database Workflows
 
-PHPX must support:
+Elefante must support:
 
 1. Create and drop project databases.
 2. Project scoped users and credentials.
@@ -1366,10 +1368,39 @@ The founding scale target remains:
 5. Shared compatible services.
 6. Fast project switching.
 7. Clear per project resource visibility.
+8. Multiple active environments from the same repository without port, domain, process, or database collisions.
+9. Detection and cleanup of orphaned processes, routes, databases, and service state.
 
 Performance claims require published comparisons using equivalent Laravel, WordPress, Symfony, and generic fixtures.
 
-### 18.12 Graphical Interface
+### 18.12 Parallel Workspaces and Worktrees
+
+A project and an environment are not always the same thing. One repository may have several branches or Git worktrees active at once, and each active workspace must behave like an isolated development environment.
+
+Elefante must:
+
+1. Detect the repository root, branch, and worktree identity.
+2. Assign a stable environment identity to each active workspace.
+3. Allocate collision free web, frontend, debugger, websocket, and auxiliary ports.
+4. Prefer stable local domains so people do not need to manage ports manually.
+5. Share compatible service engines while creating isolated databases, users, schemas, namespaces, and storage paths.
+6. Clone or snapshot a source database into a workspace database through an explicit, reviewable operation.
+7. Keep process supervision, logs, environment variables, and runtime state scoped to the workspace.
+8. Expose machine readable lifecycle commands so terminal automation can create, inspect, start, stop, and remove workspaces safely.
+9. Track ownership of generated resources and remove them without touching another workspace.
+10. Report orphaned resources and offer a repair or cleanup plan before mutation.
+
+The founding reference workflow is a dashboard repository with four simultaneous feature worktrees, four isolated databases on one PostgreSQL instance, and four frontend processes without manual port coordination. The portfolio reference workflow is approximately fifteen WordPress projects remaining registered without becoming an unmanaged collection of servers, databases, and background processes.
+
+### 18.13 Share and Tunnel Integration
+
+Elefante should make a local application reachable from a phone, collaborator, or external webhook with one project aware command.
+
+The first implementation may delegate transport to established tunnel providers such as ngrok, Cloudflare Tunnel, or Expose. Elefante must own project selection, local target resolution, process lifecycle, status, logs, generated URL output, and cleanup.
+
+A future first party tunnel network may be built after demand, abuse prevention, relay operations, authentication, bandwidth policy, and cost are understood. The local command contract should allow the provider to change without changing the developer workflow.
+
+### 18.14 Graphical Interface
 
 The Phase 2 graphical interface must provide:
 
@@ -1386,9 +1417,9 @@ The Phase 2 graphical interface must provide:
 
 The graphical interface must be a client of the same local API used by the command line. It must not introduce a second control path or hide core functionality behind a paid tier.
 
-### 18.13 Project Contract
+### 18.15 Project Contract
 
-Phase 2 may make a committed `phpx.toml` the preferred environment contract after Phase 1 validates the required fields.
+Phase 2 may make a committed `elefante.toml` the preferred environment contract after Phase 1 validates the required fields.
 
 The contract may declare:
 
@@ -1403,11 +1434,11 @@ The contract may declare:
 9. Environment variable names without committed secrets.
 10. Provider compatibility policy.
 
-`phpx.lock` may lock exact runtime, extension, service, Composer, and tool artifacts without duplicating `composer.lock`.
+`elefante.lock` may lock exact runtime, extension, service, Composer, and tool artifacts without duplicating `composer.lock`.
 
-### 18.14 Migration and Coexistence
+### 18.16 Migration and Coexistence
 
-PHPX must detect and safely coexist with existing tools.
+Elefante must detect and safely coexist with existing tools.
 
 Migration assistance should read recognized configuration from:
 
@@ -1420,40 +1451,46 @@ Migration assistance should read recognized configuration from:
 7. Local where accessible through supported exports.
 8. Common Docker Compose environments.
 
-Import must produce a reviewable plan. PHPX must not disable or uninstall another environment product without explicit permission.
+Import must produce a reviewable plan. Elefante must not disable or uninstall another environment product without explicit permission.
 
 ## 19. Phase 2 Commands
 
 Phase 2 extends the command line without changing the Phase 1 meanings.
 
 ```console
-phpx up
-phpx down
-phpx restart
-phpx status
-phpx open
-phpx sites
-phpx site add
-phpx site remove
-phpx php list
-phpx php install
-phpx php use
-phpx extensions
-phpx services
-phpx service start
-phpx service stop
-phpx db create
-phpx db import
-phpx db export
-phpx db snapshot
-phpx db restore
-phpx cert trust
-phpx cert secure
-phpx cert unsecure
-phpx logs
-phpx processes
-phpx daemon status
-phpx gui
+elefante up
+elefante down
+elefante restart
+elefante status
+elefante open
+elefante sites
+elefante site add
+elefante site remove
+elefante php list
+elefante php install
+elefante php use
+elefante extensions
+elefante services
+elefante service start
+elefante service stop
+elefante db create
+elefante db import
+elefante db export
+elefante db snapshot
+elefante db restore
+elefante cert trust
+elefante cert secure
+elefante cert unsecure
+elefante logs
+elefante processes
+elefante workspaces
+elefante workspace create
+elefante workspace remove
+elefante share
+elefante share status
+elefante share stop
+elefante daemon status
+elefante gui
 ```
 
 Command naming must remain coherent and scriptable. New commands require structured output and noninteractive behavior before they are considered complete.
@@ -1462,7 +1499,7 @@ Command naming must remain coherent and scriptable. New commands require structu
 
 ### 20.1 Complete Local Environment
 
-* [ ] A clean supported machine can install PHPX without an existing PHP runtime.
+* [ ] A clean supported machine can install Elefante without an existing PHP runtime.
 * [ ] A current Laravel fixture can synchronize, serve through trusted TLS, connect to a managed database, run a queue, and execute tests.
 * [ ] A Bedrock WordPress fixture can synchronize, serve through trusted TLS, import a database, run WP CLI, and capture mail.
 * [ ] A Symfony fixture can synchronize, serve, run console commands, and supervise a worker.
@@ -1477,21 +1514,25 @@ Command naming must remain coherent and scriptable. New commands require structu
 * [ ] Idle and active resource use is published against equivalent Herd or Yerd and DDEV or Lerd workflows.
 * [ ] Project activation and first request latency are measured on macOS, Linux, and Windows where supported.
 * [ ] A project can be removed without affecting unrelated project data.
+* [ ] Four worktrees from one repository can run simultaneously with isolated databases and no manual port coordination.
+* [ ] Removing one worktree environment does not stop processes or delete data owned by another worktree.
+* [ ] Orphaned workspace resources can be detected and cleaned through a reviewable plan.
 
 ### 20.3 Reproducibility and Safety
 
-* [ ] A committed PHPX contract can prepare equivalent supported local environments.
+* [ ] A committed Elefante contract can prepare equivalent supported local environments.
 * [ ] Runtime, extension, Composer, and service artifacts can be locked and verified.
 * [ ] Secrets remain outside committed configuration.
 * [ ] Destructive database operations require explicit project and action confirmation.
-* [ ] PHPX can coexist with another local environment without silently taking over its domains, ports, or services.
+* [ ] Elefante can coexist with another local environment without silently taking over its domains, ports, or services.
 
 ### 20.4 Replacement Validation
 
 * [ ] Users can migrate representative Herd, DDEV, Lerd, and manual projects through reviewable plans.
-* [ ] At least one Laravel team and one WordPress team can use PHPX as their only supported local environment during an extended pilot.
+* [ ] At least one Laravel team and one WordPress team can use Elefante as their only supported local environment during an extended pilot.
 * [ ] The command line covers every core graphical action.
 * [ ] No essential local capability requires a proprietary paid tier.
+* [ ] A supported project can be shared through at least one tunnel provider without manual target or process management.
 
 ## 21. Phase 3 Production Delivery
 
@@ -1502,16 +1543,16 @@ Phase 3 carries the same project interpretation into build and deployment while 
 The target interface may include:
 
 ```console
-phpx deploy plan production
-phpx deploy production
-phpx releases production
-phpx rollback production <release>
-phpx doctor production
+elefante deploy plan production
+elefante deploy production
+elefante releases production
+elefante rollback production <release>
+elefante doctor production
 ```
 
 ### 21.2 Production Provider Model
 
-PHPX should support providers for:
+Elefante should support providers for:
 
 1. Managed Laravel platforms.
 2. Generic Linux servers over a constrained deployment protocol.
@@ -1519,11 +1560,11 @@ PHPX should support providers for:
 4. Self hosted application platforms.
 5. Static build outputs where applicable.
 
-The provider model should allow PHPX to become the one user interface without requiring PHPX to own every server or cloud account.
+The provider model should allow Elefante to become the one user interface without requiring Elefante to own every server or cloud account.
 
 ### 21.3 Production Boundaries
 
-PHPX must not assume that local shared services are appropriate production architecture.
+Elefante must not assume that local shared services are appropriate production architecture.
 
 Production delivery must define:
 
@@ -1564,7 +1605,7 @@ The initial codebase should separate:
 7. `tools`, isolated tool environments.
 8. `cache`, verified artifacts and metadata.
 9. `output`, human and structured rendering.
-10. `config`, optional PHPX policy and local state.
+10. `config`, optional Elefante policy and local state.
 11. `frameworks`, Laravel, WordPress, Symfony, and generic adapters.
 12. `security`, checksums, provenance, redaction, and trust policy.
 
@@ -1590,7 +1631,7 @@ Framework adapters may add facts and convenience commands, but they must not byp
 
 ### 22.3 State Locations
 
-PHPX must separate:
+Elefante must separate:
 
 1. Committed project intent.
 2. Committed resolution locks.
@@ -1600,7 +1641,7 @@ PHPX must separate:
 6. Phase 2 daemon state.
 7. Logs and temporary process state.
 
-The exact operating system paths must follow platform conventions and remain inspectable through a PHPX command.
+The exact operating system paths must follow platform conventions and remain inspectable through a Elefante command.
 
 ### 22.4 Versioned Interfaces
 
@@ -1609,7 +1650,7 @@ The following interfaces require explicit versions before stability promises:
 1. Structured command output.
 2. Provider protocol.
 3. Project configuration schema.
-4. PHPX lock schema.
+4. Elefante lock schema.
 5. Phase 2 local API.
 6. Phase 3 deployment provider protocol.
 
@@ -1648,9 +1689,9 @@ The fixture suite should include:
 
 Measure:
 
-1. Cold and warm PHPX startup.
+1. Cold and warm Elefante startup.
 2. Cold and warm project discovery.
-3. PHPX wrapper overhead compared with direct command execution.
+3. Elefante wrapper overhead compared with direct command execution.
 4. Initial and repeated synchronization.
 5. Isolated tool cold and warm execution.
 6. Cache size and deduplication.
@@ -1683,7 +1724,7 @@ No benchmark result may be claimed without published fixtures, machine details, 
 5. Prove one isolated provider adapter.
 6. Define structured output conventions.
 
-Exit condition: PHPX can explain a representative Laravel project and show a credible provider plan.
+Exit condition: Elefante can explain a representative Laravel project and show a credible provider plan.
 
 ### Milestone 1A: Doctor and Plan
 
@@ -1693,7 +1734,7 @@ Exit condition: PHPX can explain a representative Laravel project and show a cre
 4. Implement provider inspection.
 5. Implement human and JSON output.
 
-Exit condition: `phpx doctor` and `phpx plan` produce trusted, read only results on the fixture suite.
+Exit condition: `elefante doctor` and `elefante plan` produce trusted, read only results on the fixture suite.
 
 ### Milestone 1B: Sync and Run
 
@@ -1721,7 +1762,7 @@ Exit condition: the complete Phase 1 command surface is ready for public beta.
 2. Recruit Composer library maintainers.
 3. Validate repeated multi project use.
 4. Record provider gaps and requested first party capabilities.
-5. Decide whether optional PHPX configuration and locking have earned inclusion.
+5. Decide whether optional Elefante configuration and locking have earned inclusion.
 
 Exit condition: the Phase 2 adoption gate is satisfied or the product remains focused on the execution layer.
 
@@ -1734,7 +1775,7 @@ Exit condition: the Phase 2 adoption gate is satisfied or the product remains fo
 5. Implement local TLS.
 6. Benchmark representative sites.
 
-Exit condition: one Laravel and one WordPress fixture run through a PHPX owned local provider.
+Exit condition: one Laravel and one WordPress fixture run through a Elefante owned local provider.
 
 ### Milestone 2B: Shared Services and Processes
 
@@ -1745,7 +1786,7 @@ Exit condition: one Laravel and one WordPress fixture run through a PHPX owned l
 5. Add process supervision.
 6. Validate portfolio scale.
 
-Exit condition: PHPX supports complete daily local workflows without an external environment product.
+Exit condition: Elefante supports complete daily local workflows without an external environment product.
 
 ### Milestone 2C: Graphical Interface and Migration
 
@@ -1763,7 +1804,7 @@ Milestone 3 begins only after its entry gate. It must receive a separate detaile
 
 ## 25. Risks and Mitigations
 
-### 25.1 PHPX Becomes Only a Wrapper
+### 25.1 Elefante Becomes Only a Wrapper
 
 **Risk:** Provider delegation produces little value beyond shell aliases.
 
@@ -1777,9 +1818,9 @@ Milestone 3 begins only after its entry gate. It must receive a separate detaile
 
 ### 25.3 Configuration Fragmentation
 
-**Risk:** PHPX adds another manifest before proving distinct intent.
+**Risk:** Elefante adds another manifest before proving distinct intent.
 
-**Mitigation:** Derive from Composer and established files first. Add optional configuration only for PHPX specific policy. Do not duplicate dependency or provider configuration unnecessarily.
+**Mitigation:** Derive from Composer and established files first. Add optional configuration only for Elefante specific policy. Do not duplicate dependency or provider configuration unnecessarily.
 
 ### 25.4 Artifact Supply Chain Burden
 
@@ -1789,7 +1830,7 @@ Milestone 3 begins only after its entry gate. It must receive a separate detaile
 
 ### 25.5 Composer Semantic Mismatch
 
-**Risk:** PHPX approximates Composer behavior and breaks real projects.
+**Risk:** Elefante approximates Composer behavior and breaks real projects.
 
 **Mitigation:** Invoke official Composer, preserve arguments and environment, maintain plugin and script fixtures, and avoid native replacement in Phase 1.
 
@@ -1797,7 +1838,7 @@ Milestone 3 begins only after its entry gate. It must receive a separate detaile
 
 **Risk:** Proxy, certificate, service, GUI, or deployment work delays the entry wedge.
 
-**Mitigation:** Enforce the Phase 1 outside scope list. Provider capabilities may be inspected or invoked, but PHPX does not own those systems until the Phase 2 gate.
+**Mitigation:** Enforce the Phase 1 outside scope list. Provider capabilities may be inspected or invoked, but Elefante does not own those systems until the Phase 2 gate.
 
 ### 25.7 Cross Platform Claims Exceed Reality
 
@@ -1807,7 +1848,7 @@ Milestone 3 begins only after its entry gate. It must receive a separate detaile
 
 ### 25.8 First Party Platform Arrives Too Late
 
-**Risk:** PHPX gains users but external providers absorb the execution layer.
+**Risk:** Elefante gains users but external providers absorb the execution layer.
 
 **Mitigation:** Design the provider contract so the first party backend can begin immediately after the adoption gate. Retain the same commands and normalized model throughout the transition.
 
@@ -1856,8 +1897,8 @@ The following decisions require spikes or user validation before implementation 
 
 1. Which host provider will power the Phase 1 technical proof?
 2. How much Composer constraint logic should Go implement before delegating to Composer?
-3. What exact data belongs in optional `phpx.toml` during Phase 1?
-4. Should `phpx.lock` ship during Phase 1 or wait for Phase 2 artifact ownership?
+3. What exact data belongs in optional `elefante.toml` during Phase 1?
+4. Should `elefante.lock` ship during Phase 1 or wait for Phase 2 artifact ownership?
 5. Which PHP versions and Laravel versions form the initial support policy?
 6. Which provider becomes the first isolated topology?
 7. Which runtime artifact strategy can be sustained for Phase 2?
@@ -1891,7 +1932,7 @@ External capabilities and licensing can change. Competitor claims must be revali
 
 The product direction is intentionally ambitious and intentionally sequenced.
 
-Phase 1 establishes PHPX as the trusted way to understand, synchronize, and execute Composer projects.
+Phase 1 establishes Elefante as the trusted way to understand, synchronize, and execute Composer projects.
 
 Phase 2 uses that position to deliver a complete open source local PHP environment with first party runtimes, extensions, routing, certificates, services, processes, portfolio management, and a graphical interface.
 

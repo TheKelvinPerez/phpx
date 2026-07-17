@@ -140,7 +140,7 @@ https://app.docker.com/signup
 * [ ] Set the website to `https://elefantephp.com`
 * [ ] Add the short description
 
-Do not rename or transfer the current `phpx` repository until the repository migration is handled intentionally.
+Do not rename or transfer the temporary GitHub repository until the repository migration is handled intentionally.
 
 The eventual canonical repository should be:
 

@@ -37,6 +37,8 @@ Product terminology should remain in English:
 * [x] Reserved the npm package scope `@elefantephp`
 * [x] Created `accounts@elefantephp.com`
 * [x] Forwarded `accounts@elefantephp.com` to `thekelvinperez@gmail.com`
+* [x] Created `elefantephp@proton.me`
+* [x] Claimed the YouTube handle `@elefantephp`
 
 ## Tomorrow's Priority Checklist
 
@@ -44,7 +46,7 @@ Complete these in order. The goal is to claim the important names first. Profile
 
 ### 1. Create the Dedicated Elefante Inbox
 
-* [ ] Try to create `elefantephp@proton.me`
+* [x] Create `elefantephp@proton.me`
 * [ ] Use a unique password stored in a password manager
 * [ ] Enable two factor authentication or a passkey
 * [ ] Save the recovery codes somewhere outside the mailbox
@@ -79,7 +81,7 @@ https://accounts.google.com/signup
 * [ ] Sign in with the dedicated Elefante Google Account
 * [ ] Create a business channel or Brand Account
 * [ ] Set the channel name to `Elefante`
-* [ ] Claim the handle `@elefantephp`
+* [x] Claim the handle `@elefantephp`
 * [ ] Set the website to `https://elefantephp.com`
 * [ ] Use the short description `The local development runtime for PHP.`
 * [ ] Add the personal Google Account as a second owner or manager
@@ -126,6 +128,72 @@ Expected image name:
 Docker signup:
 
 https://app.docker.com/signup
+
+### Docker Hub Reservation Reference
+
+Elefante does not need a Docker container or published image during the current implementation phase. The immediate purpose of Docker Hub is to reserve the public namespace `elefantephp` before someone else claims it.
+
+The concepts are separate:
+
+`Elefante source code → container image → image registry → running container`
+
+Docker Hub is the image registry. A container is a running instance of an image. Creating the Docker account reserves the namespace without requiring Elefante to build or publish an image.
+
+#### Reservation Steps
+
+1. Open the Docker signup page:
+
+   https://app.docker.com/signup
+
+2. Register directly with `accounts@elefantephp.com`.
+
+3. Enter `elefantephp` as the exact Docker ID. Docker IDs cannot be changed later, so verify the spelling before submitting.
+
+4. Use a unique password stored in the Elefante password manager records.
+
+5. Complete the email verification code delivered through the Elefante ownership email.
+
+6. Sign in, open the account avatar, select Account settings, then select 2FA.
+
+7. Save the recovery code before connecting the authenticator application.
+
+8. Scan the authentication QR code, enter the six digit code, and enable two factor authentication.
+
+9. Complete the public profile with these values:
+
+   * Name: `Elefante`
+   * Company: `Elefante`
+   * Website: `https://elefantephp.com`
+
+10. Save the Docker password and recovery code with the other Elefante ownership credentials.
+
+Official Docker references:
+
+https://docs.docker.com/accounts/create-account/
+
+https://docs.docker.com/security/2fa/
+
+#### Do Not Create Yet
+
+* Do not install Docker Desktop solely for this reservation.
+* Do not create or publish a placeholder container image.
+* Do not create a personal access token until local command line access or automation needs one.
+* Do not create a paid Docker organization during brand reservation.
+* Do not connect automated builds before Elefante has a reviewed image design and release workflow.
+
+#### Future Image Direction
+
+The native Go binary remains Elefante's primary distribution. A future container image may support continuous integration, isolated project inspection, provider conformance testing, or an optional container based installation path.
+
+The planned canonical image location is:
+
+`ghcr.io/elefantephp/elefante`
+
+The planned Docker Hub mirror is:
+
+`docker.io/elefantephp/elefante`
+
+The image contents, supported architectures, tags, security policy, provenance, and release process must be designed before the first image is published.
 
 ## Verify Existing Reservations
 

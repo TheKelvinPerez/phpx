@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/elefantephp/elefante/internal/cli"
+	"github.com/elefantephp/elefante/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -19,9 +20,10 @@ func executeCommand(
 ) (*cobra.Command, string, string, error) {
 	t.Helper()
 
-	command := cli.NewRootCommand(dependencies)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+	dependencies.Renderer = output.NewHumanRenderer(&stdout, &stderr)
+	command := cli.NewRootCommand(dependencies)
 	command.SetArgs(arguments)
 	command.SetIn(input)
 	command.SetOut(&stdout)

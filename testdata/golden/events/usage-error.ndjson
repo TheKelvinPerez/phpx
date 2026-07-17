@@ -1,0 +1,3 @@
+{"schema":"elefante.events/v1","sequence":1,"command":"unknown","type":"started","payload":{}}
+{"schema":"elefante.events/v1","sequence":2,"command":"unknown","type":"error","payload":{"code":"ELEFANTE_USAGE","category":"usage","message":"unknown command \"unknown\" for \"elefante\"","hint":"Run elefante --help to see available commands.","retryable":false}}
+{"schema":"elefante.events/v1","sequence":3,"command":"unknown","type":"completed","payload":{"exit":{"origin":"elefante","code":2}}}

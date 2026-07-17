@@ -8,9 +8,9 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 1, Go Module And Test Harness, complete
+Current phase: Phase 2, Machine Event Protocol And Error Contract, complete
 
-Next phase: Phase 2, Machine Event Protocol And Error Contract
+Next phase: Phase 3, Project And Workspace Discovery
 
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
@@ -80,10 +80,10 @@ Dependencies: Phase 1 completed
 
 Completion Criteria:
 
-* [ ] Every machine output line is independently valid JSON.
-* [ ] Equivalent inputs produce identical canonical events.
-* [ ] Error events and process exits share one typed source.
-* [ ] Human output remains separate from protocol encoding.
+* [x] Every machine output line is independently valid JSON.
+* [x] Equivalent inputs produce identical canonical events.
+* [x] Error events and process exits share one typed source.
+* [x] Human output remains separate from protocol encoding.
 
 ## Phase 3: Project And Workspace Discovery
 

@@ -1,0 +1,3 @@
+{"schema":"elefante.events/v1","sequence":1,"command":"version","type":"started","payload":{}}
+{"schema":"elefante.events/v1","sequence":2,"command":"version","type":"result","payload":{"version":"dev"}}
+{"schema":"elefante.events/v1","sequence":3,"command":"version","type":"completed","payload":{"exit":{"origin":"elefante","code":0}}}

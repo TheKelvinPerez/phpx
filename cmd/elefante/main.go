@@ -18,11 +18,16 @@ func main() {
 	application := app.New(app.Dependencies{
 		Build: version.Current(),
 	})
-	root := cli.NewRootCommand(cli.Dependencies{
-		Application: application,
-	})
 
-	if err := root.ExecuteContext(ctx); err != nil {
-		os.Exit(1)
+	exitCode := cli.Execute(ctx, cli.Dependencies{
+		Application: application,
+	}, cli.Execution{
+		Arguments: os.Args[1:],
+		Input:     os.Stdin,
+		Output:    os.Stdout,
+		Error:     os.Stderr,
+	})
+	if exitCode != 0 {
+		os.Exit(exitCode)
 	}
 }

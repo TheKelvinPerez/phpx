@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/elefantephp/elefante/internal/app"
+	"github.com/elefantephp/elefante/internal/composer"
 	"github.com/elefantephp/elefante/internal/discovery"
 	"github.com/elefantephp/elefante/internal/model"
 	"github.com/elefantephp/elefante/internal/providers"
@@ -264,6 +265,96 @@ func TestPlanIncludesSelectedProviderPreparation(t *testing.T) {
 	}
 }
 
+func TestPlanPrefersExactManagedComposerAndPreparesItsArtifact(t *testing.T) {
+	facts := compatibleFacts()
+	facts.Configuration.Path = "/workspace/elefante.toml"
+	facts.Configuration.Composer.Constraint = "2.8.*"
+	managed := &fakeManagedComposer{
+		release: composer.Release{
+			Version:     "2.8.8",
+			URL:         "https://getcomposer.example/download/2.8.8/composer.phar",
+			SHA256:      "sha256:managed",
+			MetadataURL: "https://getcomposer.example/versions",
+		},
+		observation: model.ComposerObservation{
+			Version:         "2.8.8",
+			Source:          composer.SourceManaged,
+			Path:            "/cache/composer.phar",
+			Identity:        "sha256:managed",
+			SHA256:          "sha256:managed",
+			DistributionURL: "https://getcomposer.example/download/2.8.8/composer.phar",
+			MetadataURL:     "https://getcomposer.example/versions",
+		},
+	}
+	nativeProvider := &fakeProvider{
+		name: "native",
+		observation: model.ProviderObservation{
+			Provider:  "native",
+			Available: true,
+			Runtimes: []model.RuntimeObservation{
+				{Name: "php", Version: "8.4.3"},
+			},
+			Composer: []model.ComposerObservation{
+				{
+					Version:  "2.8.9",
+					Source:   composer.SourceSystem,
+					Path:     "/usr/local/bin/composer",
+					Identity: "sha256:system",
+				},
+			},
+			Fingerprint: "sha256:native",
+		},
+	}
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return facts, nil
+		},
+		Providers:       []providers.Provider{nativeProvider},
+		ManagedComposer: managed,
+	})
+
+	analysis, err := application.Plan(t.Context(), app.PlanRequest{
+		ProjectPath: "/workspace",
+		Provider:    "native",
+	})
+	if err != nil {
+		t.Fatalf("build managed Composer plan: %v", err)
+	}
+	if len(managed.requests) != 1 ||
+		managed.requests[0].Constraint != "2.8.*" ||
+		managed.requests[0].PHPVersion != "8.4.3" {
+		t.Fatalf("unexpected managed Composer resolution %#v", managed.requests)
+	}
+	prepare := planActionByKind(
+		t,
+		analysis.Plan.Actions,
+		model.ActionPrepareComposer,
+	)
+	expectedInputs := map[string]string{
+		"identity":     "sha256:managed",
+		"metadata_url": managed.release.MetadataURL,
+		"sha256":       managed.release.SHA256,
+		"url":          managed.release.URL,
+		"version":      managed.release.Version,
+	}
+	for name, expected := range expectedInputs {
+		if actual := planActionInput(prepare, name); actual != expected {
+			t.Fatalf("prepare Composer input %q is %q, expected %q", name, actual, expected)
+		}
+	}
+	install := planActionByKind(
+		t,
+		analysis.Plan.Actions,
+		model.ActionInstallDependencies,
+	)
+	if planActionInput(install, "composer") != "sha256:managed" {
+		t.Fatalf("managed Composer was not selected for install %#v", install)
+	}
+}
+
 func TestPlanDoesNotRequestActionsFromUnselectedProviders(t *testing.T) {
 	ddevProvider := &fakeProvider{
 		name:        "ddev",
@@ -378,6 +469,48 @@ func TestSyncAuthorizesBeforeCallingMutationBoundary(t *testing.T) {
 	}
 	if mutationCalls != 2 {
 		t.Fatalf("expected exact digest to reach mutation boundary, got %d", mutationCalls)
+	}
+}
+
+func TestSyncPassesApprovedPolicyAndTrustToSynchronizationEngine(t *testing.T) {
+	var executions []app.SyncExecution
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return compatibleFacts(), nil
+		},
+		Providers: []providers.Provider{
+			&fakeProvider{
+				name:        "native",
+				observation: compatibleProviderObservation("native"),
+			},
+		},
+		ApplySynchronization: func(
+			_ context.Context,
+			execution app.SyncExecution,
+		) (app.SyncResult, error) {
+			executions = append(executions, execution)
+
+			return app.SyncResult{}, nil
+		},
+	})
+
+	analysis, err := application.Sync(t.Context(), app.SyncRequest{
+		ProjectPath:    "/workspace",
+		Provider:       "native",
+		NonInteractive: true,
+		Yes:            true,
+	})
+	if err != nil {
+		t.Fatalf("apply approved synchronization: %v", err)
+	}
+	if len(executions) != 1 ||
+		executions[0].Analysis.Plan.Digest != analysis.Plan.Digest ||
+		!executions[0].NonInteractive ||
+		!executions[0].TrustApproved {
+		t.Fatalf("unexpected approved synchronization execution %#v", executions)
 	}
 }
 
@@ -499,13 +632,65 @@ func diagnosticByCode(
 	return model.Diagnostic{}
 }
 
+func planActionByKind(
+	t *testing.T,
+	actions []model.PlanAction,
+	kind model.ActionKind,
+) model.PlanAction {
+	t.Helper()
+
+	for _, action := range actions {
+		if action.Kind == kind {
+			return action
+		}
+	}
+	t.Fatalf("expected action %q, got %#v", kind, actions)
+
+	return model.PlanAction{}
+}
+
+func planActionInput(action model.PlanAction, name string) string {
+	for _, input := range action.Inputs {
+		if input.Name == name {
+			return input.Value
+		}
+	}
+
+	return ""
+}
+
+type fakeManagedComposer struct {
+	release     composer.Release
+	observation model.ComposerObservation
+	requests    []composer.ResolveRequest
+}
+
+func (manager *fakeManagedComposer) Resolve(
+	_ context.Context,
+	request composer.ResolveRequest,
+) (composer.Release, error) {
+	manager.requests = append(manager.requests, request)
+
+	return manager.release, nil
+}
+
+func (manager *fakeManagedComposer) Observation(
+	composer.Release,
+) (model.ComposerObservation, error) {
+	return manager.observation, nil
+}
+
 type fakeProvider struct {
-	name            string
-	observation     model.ProviderObservation
-	inspectRequests []providers.InspectRequest
-	planRequests    []providers.ProviderPlanRequest
-	planResult      providers.ProviderPlan
-	planError       error
+	name              string
+	observation       model.ProviderObservation
+	inspectRequests   []providers.InspectRequest
+	planRequests      []providers.ProviderPlanRequest
+	applyRequests     []providers.ProviderAction
+	executionRequests []providers.ExecutionRequest
+	planResult        providers.ProviderPlan
+	planError         error
+	applyResult       providers.ActionResult
+	applyError        error
 }
 
 func (provider *fakeProvider) Name() string {
@@ -531,10 +716,18 @@ func (provider *fakeProvider) Plan(
 }
 
 func (provider *fakeProvider) Apply(
-	context.Context,
-	providers.ProviderAction,
-	providers.ActionRuntime,
+	_ context.Context,
+	request providers.ProviderAction,
+	_ providers.ActionRuntime,
 ) (providers.ActionResult, error) {
+	provider.applyRequests = append(provider.applyRequests, request)
+	if provider.applyError != nil ||
+		provider.applyResult.Compensation != nil ||
+		len(provider.applyResult.Outputs) > 0 ||
+		len(provider.applyResult.Diagnostics) > 0 {
+		return provider.applyResult, provider.applyError
+	}
+
 	return providers.ActionResult{
 		Outputs:     []model.ActionOutput{},
 		Diagnostics: []model.Diagnostic{},
@@ -545,6 +738,11 @@ func (provider *fakeProvider) ExecutionSpec(
 	_ context.Context,
 	request providers.ExecutionRequest,
 ) (providers.ExecutionSpec, error) {
+	provider.executionRequests = append(
+		provider.executionRequests,
+		request,
+	)
+
 	return providers.ExecutionSpec{
 		Executable:       request.Executable,
 		Arguments:        request.Arguments,

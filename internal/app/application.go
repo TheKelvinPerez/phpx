@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/elefantephp/elefante/internal/composer"
 	"github.com/elefantephp/elefante/internal/discovery"
 	"github.com/elefantephp/elefante/internal/model"
 	"github.com/elefantephp/elefante/internal/plan"
@@ -14,19 +15,36 @@ import (
 
 type DiscoverProject func(context.Context, discovery.Request) (model.ProjectFacts, error)
 type ExecuteApprovedPlan func(context.Context, Analysis) error
+type ApplySynchronization func(
+	context.Context,
+	SyncExecution,
+) (SyncResult, error)
+
+type ManagedComposer interface {
+	Resolve(
+		context.Context,
+		composer.ResolveRequest,
+	) (composer.Release, error)
+	Observation(
+		composer.Release,
+	) (model.ComposerObservation, error)
+}
 
 type Dependencies struct {
-	Build               model.BuildInfo
-	DiscoverProject     DiscoverProject
-	Providers           []providers.Provider
-	ExecuteApprovedPlan ExecuteApprovedPlan
+	Build                model.BuildInfo
+	DiscoverProject      DiscoverProject
+	Providers            []providers.Provider
+	ManagedComposer      ManagedComposer
+	ExecuteApprovedPlan  ExecuteApprovedPlan
+	ApplySynchronization ApplySynchronization
 }
 
 type Application struct {
-	build               model.BuildInfo
-	discoverProject     DiscoverProject
-	providers           []providers.Provider
-	executeApprovedPlan ExecuteApprovedPlan
+	build                model.BuildInfo
+	discoverProject      DiscoverProject
+	providers            []providers.Provider
+	managedComposer      ManagedComposer
+	applySynchronization ApplySynchronization
 }
 
 type DoctorRequest struct {
@@ -67,10 +85,23 @@ func New(dependencies Dependencies) *Application {
 		discoverProject = discovery.Discover
 	}
 
-	executeApprovedPlan := dependencies.ExecuteApprovedPlan
-	if executeApprovedPlan == nil {
-		executeApprovedPlan = func(context.Context, Analysis) error {
-			return model.NewError(
+	applySynchronization := dependencies.ApplySynchronization
+	if applySynchronization == nil && dependencies.ExecuteApprovedPlan != nil {
+		applySynchronization = func(
+			ctx context.Context,
+			execution SyncExecution,
+		) (SyncResult, error) {
+			err := dependencies.ExecuteApprovedPlan(ctx, execution.Analysis)
+
+			return SyncResult{}, err
+		}
+	}
+	if applySynchronization == nil {
+		applySynchronization = func(
+			context.Context,
+			SyncExecution,
+		) (SyncResult, error) {
+			return SyncResult{}, model.NewError(
 				model.ErrorSync,
 				"Synchronization execution is not available in this build phase.",
 			).WithHint(
@@ -80,10 +111,11 @@ func New(dependencies Dependencies) *Application {
 	}
 
 	return &Application{
-		build:               dependencies.Build,
-		discoverProject:     discoverProject,
-		providers:           append([]providers.Provider(nil), dependencies.Providers...),
-		executeApprovedPlan: executeApprovedPlan,
+		build:                dependencies.Build,
+		discoverProject:      discoverProject,
+		providers:            append([]providers.Provider(nil), dependencies.Providers...),
+		managedComposer:      dependencies.ManagedComposer,
+		applySynchronization: applySynchronization,
 	}
 }
 
@@ -153,7 +185,13 @@ func (application *Application) Sync(
 	); err != nil {
 		return analysis, err
 	}
-	if err := application.executeApprovedPlan(ctx, analysis); err != nil {
+	if _, err := application.applySynchronization(ctx, SyncExecution{
+		Analysis:       analysis,
+		NonInteractive: request.NonInteractive,
+		TrustApproved: request.Yes ||
+			request.ApprovedPlan != "" ||
+			request.Confirmed,
+	}); err != nil {
 		return analysis, err
 	}
 
@@ -215,6 +253,48 @@ func (application *Application) analyze(
 	if err != nil {
 		return Analysis{}, err
 	}
+	if application.managedComposer != nil &&
+		request.Operation == model.OperationSync {
+		selectedIndex := providerObservationIndex(
+			observations,
+			builtPlan.Provider.Name,
+		)
+		phpVersion := selectedPHPVersion(builtPlan)
+		constraint := strings.TrimSpace(
+			facts.Configuration.Composer.Constraint,
+		)
+		if selectedIndex >= 0 &&
+			phpVersion != "" &&
+			(constraint != "" ||
+				len(observations[selectedIndex].Composer) == 0) {
+			release, err := application.managedComposer.Resolve(
+				ctx,
+				composer.ResolveRequest{
+					Constraint: constraint,
+					PHPVersion: phpVersion,
+					Offline:    request.Policy.Offline,
+				},
+			)
+			if err != nil {
+				return Analysis{}, err
+			}
+			managedObservation, err := application.managedComposer.Observation(
+				release,
+			)
+			if err != nil {
+				return Analysis{}, err
+			}
+			observations[selectedIndex].Composer = append(
+				observations[selectedIndex].Composer,
+				managedObservation,
+			)
+			planRequest.Observations = observations
+			builtPlan, err = plan.Build(planRequest)
+			if err != nil {
+				return Analysis{}, err
+			}
+		}
+	}
 	if request.Operation != model.OperationDoctor &&
 		builtPlan.Provider.Name != "" {
 		for index, provider := range registered {
@@ -251,6 +331,33 @@ func (application *Application) analyze(
 		Observations: observations,
 		Plan:         builtPlan,
 	}, nil
+}
+
+func providerObservationIndex(
+	observations []model.ProviderObservation,
+	name string,
+) int {
+	for index, observation := range observations {
+		if strings.EqualFold(
+			strings.TrimSpace(observation.Provider),
+			strings.TrimSpace(name),
+		) {
+			return index
+		}
+	}
+
+	return -1
+}
+
+func selectedPHPVersion(builtPlan model.Plan) string {
+	for _, requirement := range builtPlan.Requirements {
+		if requirement.Kind == model.RequirementPHP &&
+			requirement.SelectedValue != "" {
+			return requirement.SelectedValue
+		}
+	}
+
+	return ""
 }
 
 func BlockingPlanError(builtPlan model.Plan) error {

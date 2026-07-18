@@ -25,10 +25,12 @@ const (
 )
 
 type JournalAction struct {
-	ID      string           `json:"id"`
-	Kind    model.ActionKind `json:"kind"`
-	Status  ActionStatus     `json:"status"`
-	Failure string           `json:"failure,omitempty"`
+	ID          string               `json:"id"`
+	Kind        model.ActionKind     `json:"kind"`
+	Status      ActionStatus         `json:"status"`
+	Failure     string               `json:"failure,omitempty"`
+	Compensated bool                 `json:"compensated,omitempty"`
+	Outputs     []model.ActionOutput `json:"outputs,omitempty"`
 }
 
 type ActionJournal struct {
@@ -63,6 +65,13 @@ func NewActionJournal(
 }
 
 func (journal *ActionJournal) Complete(actionID string) error {
+	return journal.CompleteWithOutputs(actionID, nil)
+}
+
+func (journal *ActionJournal) CompleteWithOutputs(
+	actionID string,
+	outputs []model.ActionOutput,
+) error {
 	action, err := journal.action(actionID)
 	if err != nil {
 		return err
@@ -76,6 +85,8 @@ func (journal *ActionJournal) Complete(actionID string) error {
 	}
 	action.Status = ActionCompleted
 	action.Failure = ""
+	action.Compensated = false
+	action.Outputs = append([]model.ActionOutput(nil), outputs...)
 
 	return nil
 }
@@ -94,14 +105,33 @@ func (journal *ActionJournal) Fail(actionID string, failure string) error {
 	}
 	action.Status = ActionFailed
 	action.Failure = failure
+	action.Outputs = nil
 	journal.Status = JournalFailed
+
+	return nil
+}
+
+func (journal *ActionJournal) Compensate(actionID string) error {
+	action, err := journal.action(actionID)
+	if err != nil {
+		return err
+	}
+	if action.Status != ActionCompleted || action.Compensated {
+		return fmt.Errorf(
+			"action %q cannot compensate from status %q",
+			actionID,
+			action.Status,
+		)
+	}
+	action.Compensated = true
+	action.Outputs = nil
 
 	return nil
 }
 
 func (journal *ActionJournal) Succeed() error {
 	for _, action := range journal.Actions {
-		if action.Status != ActionCompleted {
+		if action.Status != ActionCompleted || action.Compensated {
 			return fmt.Errorf(
 				"action %q has status %q",
 				action.ID,
@@ -110,6 +140,52 @@ func (journal *ActionJournal) Succeed() error {
 		}
 	}
 	journal.Status = JournalSucceeded
+
+	return nil
+}
+
+func (journal *ActionJournal) PrepareRetry(
+	actions []model.PlanAction,
+) error {
+	if len(journal.Actions) != len(actions) {
+		return fmt.Errorf(
+			"journal has %d actions, approved plan has %d",
+			len(journal.Actions),
+			len(actions),
+		)
+	}
+	for index, action := range actions {
+		journalAction := &journal.Actions[index]
+		if journalAction.ID != action.ID ||
+			journalAction.Kind != action.Kind {
+			return fmt.Errorf(
+				"journal action %d does not match approved action %q",
+				index,
+				action.ID,
+			)
+		}
+		switch journalAction.Status {
+		case ActionCompleted:
+			if journalAction.Compensated {
+				journalAction.Status = ActionPending
+				journalAction.Compensated = false
+				journalAction.Outputs = nil
+			}
+		case ActionPending:
+			journalAction.Outputs = nil
+		case ActionFailed:
+			journalAction.Status = ActionPending
+			journalAction.Failure = ""
+			journalAction.Outputs = nil
+		default:
+			return fmt.Errorf(
+				"journal action %q has unsupported status %q",
+				journalAction.ID,
+				journalAction.Status,
+			)
+		}
+	}
+	journal.Status = JournalPending
 
 	return nil
 }

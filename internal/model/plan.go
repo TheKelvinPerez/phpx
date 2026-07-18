@@ -42,13 +42,17 @@ type ExtensionObservation struct {
 }
 
 type ComposerObservation struct {
-	Version    string          `json:"version"`
-	Source     string          `json:"source"`
-	Path       string          `json:"path,omitempty"`
-	Identity   string          `json:"identity"`
-	PluginAPI  string          `json:"plugin_api,omitempty"`
-	RuntimeAPI string          `json:"runtime_api,omitempty"`
-	Reference  SourceReference `json:"reference"`
+	Version         string          `json:"version"`
+	Source          string          `json:"source"`
+	Path            string          `json:"path,omitempty"`
+	Identity        string          `json:"identity"`
+	SHA256          string          `json:"sha256,omitempty"`
+	DistributionURL string          `json:"distribution_url,omitempty"`
+	MetadataURL     string          `json:"metadata_url,omitempty"`
+	Cached          bool            `json:"cached,omitempty"`
+	PluginAPI       string          `json:"plugin_api,omitempty"`
+	RuntimeAPI      string          `json:"runtime_api,omitempty"`
+	Reference       SourceReference `json:"reference"`
 }
 
 type ProviderState string

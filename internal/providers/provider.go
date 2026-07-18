@@ -31,8 +31,14 @@ type ActionRuntime struct {
 }
 
 type ActionResult struct {
-	Outputs     []model.ActionOutput `json:"outputs"`
-	Diagnostics []model.Diagnostic   `json:"diagnostics,omitempty"`
+	Outputs      []model.ActionOutput `json:"outputs"`
+	Diagnostics  []model.Diagnostic   `json:"diagnostics,omitempty"`
+	Compensation *ActionCompensation  `json:"compensation,omitempty"`
+}
+
+type ActionCompensation struct {
+	Safe   bool             `json:"safe"`
+	Action model.PlanAction `json:"action"`
 }
 
 type ExecutionRequest struct {

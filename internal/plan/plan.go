@@ -1176,8 +1176,10 @@ func compatibleActions(
 	providerActions []model.PlanAction,
 ) []model.PlanAction {
 	composerIdentity := ""
+	var selectedComposer model.ComposerObservation
 	if len(observation.Composer) > 0 {
-		composerIdentity = observation.Composer[0].Identity
+		selectedComposer = observation.Composer[0]
+		composerIdentity = selectedComposer.Identity
 	}
 	composerTrust := composerActionTrust(result.Trust)
 	actions := clonePlanActions(providerActions)
@@ -1219,6 +1221,35 @@ func compatibleActions(
 				},
 			})
 		}
+	}
+	if strings.EqualFold(
+		strings.TrimSpace(selectedComposer.Source),
+		"managed",
+	) {
+		network := model.NetworkRequired
+		if selectedComposer.Cached {
+			network = model.NetworkNone
+		}
+		actions = append(actions, model.PlanAction{
+			Kind:    model.ActionPrepareComposer,
+			Summary: "Prepare the verified official Composer executable.",
+			Effect:  model.EffectCacheMutation,
+			Network: network,
+			Trust:   model.TrustNone,
+			Inputs: []model.ActionInput{
+				{Name: "identity", Value: selectedComposer.Identity},
+				{
+					Name:  "metadata_url",
+					Value: selectedComposer.MetadataURL,
+				},
+				{Name: "sha256", Value: selectedComposer.SHA256},
+				{Name: "url", Value: selectedComposer.DistributionURL},
+				{Name: "version", Value: selectedComposer.Version},
+			},
+			ExpectedOutputs: []model.ActionOutput{
+				{Name: "composer", Value: selectedComposer.Identity},
+			},
+		})
 	}
 	actions = append(actions, []model.PlanAction{
 		{

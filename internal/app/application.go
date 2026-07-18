@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"sort"
+	"strings"
 
 	"github.com/elefantephp/elefante/internal/discovery"
 	"github.com/elefantephp/elefante/internal/model"
@@ -137,15 +138,46 @@ func (application *Application) analyze(
 		observations = append(observations, observation)
 	}
 
-	builtPlan, err := plan.Build(plan.Request{
+	planRequest := plan.Request{
 		Operation:    request.Operation,
 		Facts:        facts,
 		Observations: observations,
 		Provider:     request.Provider,
 		Policy:       request.Policy,
-	})
+	}
+	builtPlan, err := plan.Build(planRequest)
 	if err != nil {
 		return Analysis{}, err
+	}
+	if request.Operation != model.OperationDoctor &&
+		builtPlan.Provider.Name != "" {
+		for index, provider := range registered {
+			if !strings.EqualFold(
+				strings.TrimSpace(provider.Name()),
+				builtPlan.Provider.Name,
+			) {
+				continue
+			}
+			providerPlan, err := provider.Plan(
+				ctx,
+				providers.ProviderPlanRequest{
+					Facts:       facts,
+					Observation: observations[index],
+					Policy:      request.Policy,
+				},
+			)
+			if err != nil {
+				return Analysis{}, err
+			}
+			planRequest.ProviderPlans = map[string]providers.ProviderPlan{
+				builtPlan.Provider.Name: providerPlan,
+			}
+			builtPlan, err = plan.Build(planRequest)
+			if err != nil {
+				return Analysis{}, err
+			}
+			break
+		}
 	}
 
 	return Analysis{

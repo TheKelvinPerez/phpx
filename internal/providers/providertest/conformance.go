@@ -11,9 +11,14 @@ import (
 )
 
 type Suite struct {
-	Provider         providers.Provider
-	InspectRequest   providers.InspectRequest
-	ExecutionRequest providers.ExecutionRequest
+	Provider                 providers.Provider
+	InspectRequest           providers.InspectRequest
+	ExecutionRequest         providers.ExecutionRequest
+	AssertExecutionArguments func(
+		*testing.T,
+		providers.ExecutionSpec,
+		providers.ExecutionRequest,
+	)
 }
 
 func Run(t *testing.T, suite Suite) {
@@ -176,7 +181,16 @@ func Run(t *testing.T, suite Suite) {
 				second,
 			)
 		}
-		if !reflect.DeepEqual(first.Arguments, suite.ExecutionRequest.Arguments) {
+		if suite.AssertExecutionArguments != nil {
+			suite.AssertExecutionArguments(
+				t,
+				first,
+				suite.ExecutionRequest,
+			)
+		} else if !reflect.DeepEqual(
+			first.Arguments,
+			suite.ExecutionRequest.Arguments,
+		) {
 			t.Fatalf(
 				"execution arguments changed\nexpected: %#v\ngot:      %#v",
 				suite.ExecutionRequest.Arguments,

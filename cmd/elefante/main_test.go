@@ -360,6 +360,69 @@ func TestCompiledBinaryNativeDoctorAndPlanInspectLocalExecutables(t *testing.T) 
 	}
 }
 
+func TestCompiledBinaryRegistersDDEVProvider(t *testing.T) {
+	binary := buildBinary(t)
+	binDirectory := t.TempDir()
+	ddevPath := filepath.Join(binDirectory, "ddev")
+	ddevScript := `#!/bin/sh
+if [ "$1" = "version" ]; then
+    printf '%s\n' '{"level":"info","raw":{"DDEV version":"v1.24.8","architecture":"arm64","ddev-environment":"darwin","docker":"29.4.0","docker-platform":"orbstack"}}'
+    exit 0
+fi
+exit 64
+`
+	if err := os.WriteFile(ddevPath, []byte(ddevScript), 0o755); err != nil {
+		t.Fatalf("write fake DDEV executable: %v", err)
+	}
+	projectRoot := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(projectRoot, "composer.json"),
+		[]byte(`{"name":"acme/ddev-proof"}`+"\n"),
+		0o644,
+	); err != nil {
+		t.Fatalf("write DDEV Composer fixture: %v", err)
+	}
+
+	command := exec.Command(
+		binary,
+		"--json",
+		"--project",
+		projectRoot,
+		"--provider",
+		"ddev",
+		"doctor",
+	)
+	command.Env = environmentWithPath(os.Environ(), binDirectory)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		t.Fatalf(
+			"run DDEV doctor: %v\nstdout:\n%s\nstderr:\n%s",
+			err,
+			stdout.String(),
+			stderr.String(),
+		)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty DDEV doctor stderr, got:\n%s", stderr.String())
+	}
+
+	observation := providerObservationFromEvents(
+		t,
+		decodeCompiledEvents(t, stdout.String()),
+		"ddev",
+	)
+	if !observation.Available ||
+		observation.Version != "1.24.8" ||
+		observation.State != model.ProviderStateUnconfigured ||
+		len(observation.Engines) != 1 ||
+		observation.Engines[0].Platform != "orbstack" {
+		t.Fatalf("unexpected compiled DDEV observation %#v", observation)
+	}
+}
+
 func TestCompiledBinaryJSONDoctorCoversEveryFrameworkFixture(t *testing.T) {
 	binary := buildBinary(t)
 	fixtureRoot := filepath.Join("..", "..", "testdata", "fixtures", "frameworks")
@@ -630,6 +693,18 @@ type compiledEvent struct {
 	Command  string          `json:"command"`
 	Type     model.EventType `json:"type"`
 	Payload  json.RawMessage `json:"payload"`
+}
+
+func environmentWithPath(environment []string, path string) []string {
+	result := make([]string, 0, len(environment)+1)
+	for _, variable := range environment {
+		if strings.HasPrefix(variable, "PATH=") {
+			continue
+		}
+		result = append(result, variable)
+	}
+
+	return append(result, "PATH="+path)
 }
 
 func runCompiledDoctor(t *testing.T, binary string, projectPath string) string {

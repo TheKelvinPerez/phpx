@@ -1,13 +1,16 @@
 GO ?= go
 SMOKE_BINARY := ./tmp/elefante-phase-1
 
-.PHONY: test test-race vet smoke verify
+.PHONY: test test-race test-ddev-integration vet smoke verify
 
 test:
 	$(GO) test ./...
 
 test-race:
 	$(GO) test -race ./...
+
+test-ddev-integration:
+	ELEFANTE_DDEV_INTEGRATION=1 $(GO) test -tags=integration ./internal/providers/ddev -run TestDDEVIntegration -count=1
 
 vet:
 	$(GO) vet ./...

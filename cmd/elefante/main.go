@@ -9,6 +9,7 @@ import (
 	"github.com/elefantephp/elefante/internal/app"
 	"github.com/elefantephp/elefante/internal/cli"
 	"github.com/elefantephp/elefante/internal/providers"
+	"github.com/elefantephp/elefante/internal/providers/ddev"
 	"github.com/elefantephp/elefante/internal/providers/native"
 	"github.com/elefantephp/elefante/internal/version"
 )
@@ -21,6 +22,7 @@ func main() {
 	application := app.New(app.Dependencies{
 		Build: version.Current(),
 		Providers: []providers.Provider{
+			ddev.New(),
 			native.New(native.Dependencies{
 				ProviderPath: executablePath,
 			}),

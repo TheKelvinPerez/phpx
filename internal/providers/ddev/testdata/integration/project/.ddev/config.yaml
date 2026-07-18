@@ -1,0 +1,10 @@
+name: elefante-phase9-integration
+type: php
+docroot: public
+php_version: "8.3"
+webserver_type: nginx-fpm
+xdebug_enabled: false
+performance_mode: none
+composer_version: "2"
+omit_containers:
+    - db

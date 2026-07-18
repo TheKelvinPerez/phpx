@@ -1,0 +1,7 @@
+{
+    "name": "elefante/phase9-integration",
+    "require": {
+        "php": "^8.3",
+        "ext-json": "*"
+    }
+}

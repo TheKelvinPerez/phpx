@@ -8,9 +8,9 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 8, Native Provider Doctor And Plan, complete
+Current phase: Phase 9, DDEV Provider Doctor And Plan, complete
 
-Next phase: Phase 9, DDEV Provider Doctor And Plan
+Next phase: Phase 10, Trust, Network, State, And Locks
 
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
@@ -271,15 +271,15 @@ Dependencies: Phase 8 completed
 
 1. Run `go test ./internal/providers/ddev`.
 2. Run `go test ./internal/providers/... -run TestProviderConformance`.
-3. Run the documented DDEV integration command for the fixture.
+3. Run `make test-ddev-integration` for the isolated fixture.
 4. Confirm integration cleanup affects only the fixture environment.
 
 Completion Criteria:
 
-* [ ] DDEV passes provider conformance.
-* [ ] Missing DDEV configuration is a reviewable project mutation.
-* [ ] Frozen mode blocks configuration creation.
-* [ ] Real DDEV observations match adapter results.
+* [x] DDEV passes provider conformance.
+* [x] Missing DDEV configuration is a reviewable project mutation.
+* [x] Frozen mode blocks configuration creation.
+* [x] Real DDEV observations match adapter results.
 
 ## Phase 10: Trust, Network, State, And Locks
 

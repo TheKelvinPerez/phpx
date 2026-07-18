@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/elefantephp/elefante/internal/app"
@@ -170,6 +171,167 @@ func TestPlanReportsIncompatibleNativePHPWithoutProviderMutation(t *testing.T) {
 	}
 }
 
+func TestPlanIncludesSelectedProviderPreparation(t *testing.T) {
+	ddevProvider := &fakeProvider{
+		name: "ddev",
+		observation: model.ProviderObservation{
+			Provider:  "ddev",
+			Available: true,
+			State:     model.ProviderStateStopped,
+			Runtimes: []model.RuntimeObservation{
+				{
+					Name:    "php",
+					Version: "8.4.3",
+					Source: model.SourceReference{
+						Path: "/workspace/.ddev/config.yaml",
+						Kind: "provider_config",
+					},
+				},
+			},
+			Extensions: []model.ExtensionObservation{
+				{
+					Name:      "ext-json",
+					Version:   "8.4.3",
+					Available: true,
+					Source: model.SourceReference{
+						Path: "/workspace/.ddev/config.yaml",
+						Kind: "provider_config",
+					},
+				},
+			},
+			Composer: []model.ComposerObservation{
+				{
+					Version:  "2.9.5",
+					Source:   "ddev",
+					Path:     "/usr/local/bin/composer",
+					Identity: "sha256:composer",
+					Reference: model.SourceReference{
+						Path:  "/usr/local/bin/composer",
+						Kind:  "provider_executable",
+						Field: "example:web",
+					},
+				},
+			},
+			Fingerprint: "sha256:ddev",
+		},
+		planResult: providers.ProviderPlan{
+			Actions: []model.PlanAction{
+				{
+					Kind:       model.ActionPrepareProvider,
+					Summary:    "Start the DDEV project environment.",
+					Effect:     model.EffectProviderMutation,
+					Network:    model.NetworkNone,
+					Trust:      model.TrustNone,
+					Reversible: true,
+					Inputs: []model.ActionInput{
+						{Name: "operation", Value: "start"},
+					},
+				},
+			},
+		},
+	}
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return compatibleFacts(), nil
+		},
+		Providers: []providers.Provider{ddevProvider},
+	})
+
+	analysis, err := application.Plan(t.Context(), app.PlanRequest{
+		ProjectPath: "/workspace",
+		Provider:    "ddev",
+	})
+	if err != nil {
+		t.Fatalf("build DDEV plan: %v", err)
+	}
+
+	if len(ddevProvider.planRequests) != 1 {
+		t.Fatalf("expected one provider plan request, got %#v", ddevProvider.planRequests)
+	}
+	planRequest := ddevProvider.planRequests[0]
+	if planRequest.Facts.Identity.IdentityKey != "sha256:project" ||
+		planRequest.Observation.Provider != "ddev" ||
+		planRequest.Policy.Offline ||
+		planRequest.Policy.Frozen {
+		t.Fatalf("unexpected provider plan request %#v", planRequest)
+	}
+	if len(analysis.Plan.Actions) != 4 ||
+		analysis.Plan.Actions[0].Kind != model.ActionPrepareProvider {
+		t.Fatalf("provider preparation did not reach canonical plan: %#v", analysis.Plan.Actions)
+	}
+}
+
+func TestPlanDoesNotRequestActionsFromUnselectedProviders(t *testing.T) {
+	ddevProvider := &fakeProvider{
+		name:        "ddev",
+		observation: compatibleProviderObservation("ddev"),
+	}
+	nativeProvider := &fakeProvider{
+		name:        "native",
+		observation: compatibleProviderObservation("native"),
+		planError:   errors.New("unselected provider plan failed"),
+	}
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return compatibleFacts(), nil
+		},
+		Providers: []providers.Provider{
+			nativeProvider,
+			ddevProvider,
+		},
+	})
+
+	analysis, err := application.Plan(t.Context(), app.PlanRequest{
+		ProjectPath: "/workspace",
+		Provider:    "ddev",
+	})
+	if err != nil {
+		t.Fatalf("build explicitly selected DDEV plan: %v", err)
+	}
+
+	if analysis.Plan.Provider.Name != "ddev" {
+		t.Fatalf("expected DDEV selection, got %#v", analysis.Plan.Provider)
+	}
+	if len(ddevProvider.planRequests) != 1 {
+		t.Fatalf("selected provider was not planned once: %#v", ddevProvider.planRequests)
+	}
+	if len(nativeProvider.planRequests) != 0 {
+		t.Fatalf("unselected provider was asked to plan: %#v", nativeProvider.planRequests)
+	}
+}
+
+func compatibleProviderObservation(name string) model.ProviderObservation {
+	return model.ProviderObservation{
+		Provider:  name,
+		Available: true,
+		Runtimes: []model.RuntimeObservation{
+			{
+				Name:    "php",
+				Version: "8.4.3",
+				Source: model.SourceReference{
+					Path: "/fixture/bin/php",
+					Kind: "provider_executable",
+				},
+			},
+		},
+		Composer: []model.ComposerObservation{
+			{
+				Version:  "2.9.5",
+				Source:   name,
+				Path:     "/fixture/bin/composer",
+				Identity: "sha256:composer-" + name,
+			},
+		},
+		Fingerprint: "sha256:" + name,
+	}
+}
+
 func compatibleFacts() model.ProjectFacts {
 	return model.ProjectFacts{
 		Identity: model.ProjectIdentity{
@@ -252,6 +414,9 @@ type fakeProvider struct {
 	name            string
 	observation     model.ProviderObservation
 	inspectRequests []providers.InspectRequest
+	planRequests    []providers.ProviderPlanRequest
+	planResult      providers.ProviderPlan
+	planError       error
 }
 
 func (provider *fakeProvider) Name() string {
@@ -268,13 +433,12 @@ func (provider *fakeProvider) Inspect(
 }
 
 func (provider *fakeProvider) Plan(
-	context.Context,
-	providers.ProviderPlanRequest,
+	_ context.Context,
+	request providers.ProviderPlanRequest,
 ) (providers.ProviderPlan, error) {
-	return providers.ProviderPlan{
-		Actions:     []model.PlanAction{},
-		Diagnostics: []model.Diagnostic{},
-	}, nil
+	provider.planRequests = append(provider.planRequests, request)
+
+	return provider.planResult, provider.planError
 }
 
 func (provider *fakeProvider) Apply(

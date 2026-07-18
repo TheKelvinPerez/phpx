@@ -7,6 +7,7 @@ import (
 
 	"github.com/elefantephp/elefante/internal/model"
 	"github.com/elefantephp/elefante/internal/plan"
+	"github.com/elefantephp/elefante/internal/providers"
 )
 
 func TestBuildCompatiblePlan(t *testing.T) {
@@ -58,6 +59,71 @@ func TestBuildCompatiblePlan(t *testing.T) {
 	}
 	if !strings.HasPrefix(result.Digest, "sha256:") || len(result.Digest) != 71 {
 		t.Fatalf("expected SHA256 plan digest, got %q", result.Digest)
+	}
+}
+
+func TestBuildCanonicalizesSelectedProviderActions(t *testing.T) {
+	baselineRequest := compatibleRequest()
+	baselineRequest.Facts.Configuration.Providers.Allowed = []string{"ddev"}
+	baselineRequest.Observations[0].Provider = "ddev"
+	baselineRequest.Observations[0].Fingerprint = "sha256:ddev"
+	baseline, err := plan.Build(baselineRequest)
+	if err != nil {
+		t.Fatalf("build baseline plan: %v", err)
+	}
+
+	request := baselineRequest
+	request.ProviderPlans = map[string]providers.ProviderPlan{
+		"ddev": {
+			Actions: []model.PlanAction{
+				{
+					Kind:       model.ActionPrepareProvider,
+					Summary:    "Start the DDEV project environment.",
+					Effect:     model.EffectProviderMutation,
+					Network:    model.NetworkNone,
+					Trust:      model.TrustNone,
+					Reversible: true,
+					Inputs: []model.ActionInput{
+						{Name: "project_root", Value: "/workspace"},
+						{Name: "operation", Value: "start"},
+					},
+					ExpectedOutputs: []model.ActionOutput{
+						{Name: "provider_state", Value: "running"},
+					},
+				},
+			},
+			Diagnostics: []model.Diagnostic{
+				{
+					Code:     "ELEFANTE_DDEV_PREPARE",
+					Severity: model.SeverityWarning,
+					Message:  "DDEV preparation is required.",
+					Provider: "ddev",
+				},
+			},
+		},
+	}
+
+	result, err := plan.Build(request)
+	if err != nil {
+		t.Fatalf("build provider plan: %v", err)
+	}
+
+	if len(result.Actions) != 4 {
+		t.Fatalf("expected provider and compatible actions, got %#v", result.Actions)
+	}
+	providerAction := result.Actions[0]
+	if providerAction.Kind != model.ActionPrepareProvider ||
+		providerAction.ID == "" ||
+		providerAction.Inputs[0].Name != "operation" {
+		t.Fatalf("provider action was not canonicalized first: %#v", providerAction)
+	}
+	if len(result.Actions[1].Dependencies) != 1 ||
+		result.Actions[1].Dependencies[0] != providerAction.ID {
+		t.Fatalf("provider action was not chained into the plan: %#v", result.Actions)
+	}
+	diagnosticByCode(t, result.Diagnostics, "ELEFANTE_DDEV_PREPARE")
+	if result.Digest == baseline.Digest {
+		t.Fatalf("provider action must alter plan digest %q", result.Digest)
 	}
 }
 
@@ -213,6 +279,45 @@ func TestBuildBlocksAmbiguousProvidersDeterministically(t *testing.T) {
 		if diagnostic.Code == "ELEFANTE_REQUIREMENT_UNAVAILABLE" {
 			t.Fatalf("provider ambiguity should not report missing requirements: %#v", result.Diagnostics)
 		}
+	}
+}
+
+func TestBuildPrefersReadyNativeOverUnconfiguredDDEV(t *testing.T) {
+	request := compatibleRequest()
+	request.Facts.Composer.PlatformRequirements = nil
+	request.Facts.Configuration.Providers.Allowed = nil
+	request.Observations = append(
+		request.Observations,
+		model.ProviderObservation{
+			Provider:  "ddev",
+			Available: true,
+			State:     model.ProviderStateUnconfigured,
+			Capabilities: []model.Capability{
+				model.CapabilityExecuteCommand,
+				model.CapabilityInstallExtension,
+				model.CapabilityInstallRuntime,
+				model.CapabilityStartProvider,
+			},
+			Diagnostics: []model.Diagnostic{
+				{
+					Code:     "ELEFANTE_DDEV_CONFIG_MISSING",
+					Severity: model.SeverityWarning,
+					Message:  "The project has no DDEV configuration.",
+					Provider: "ddev",
+				},
+			},
+			Fingerprint: "sha256:ddev",
+		},
+	)
+
+	result, err := plan.Build(request)
+	if err != nil {
+		t.Fatalf("build best compatible plan: %v", err)
+	}
+
+	if result.Provider.Name != "native" ||
+		result.Provider.Reason != "best_compatible" {
+		t.Fatalf("expected ready native provider, got %#v", result.Provider)
 	}
 }
 

@@ -51,12 +51,31 @@ type ComposerObservation struct {
 	Reference  SourceReference `json:"reference"`
 }
 
+type ProviderState string
+
+const (
+	ProviderStateUnavailable  ProviderState = "unavailable"
+	ProviderStateUnconfigured ProviderState = "unconfigured"
+	ProviderStateStopped      ProviderState = "stopped"
+	ProviderStateRunning      ProviderState = "running"
+	ProviderStateDegraded     ProviderState = "degraded"
+)
+
+type EngineObservation struct {
+	Name     string          `json:"name"`
+	Version  string          `json:"version"`
+	Platform string          `json:"platform,omitempty"`
+	Source   SourceReference `json:"source"`
+}
+
 type ProviderObservation struct {
 	Provider     string                 `json:"provider"`
 	Available    bool                   `json:"available"`
 	Version      string                 `json:"version,omitempty"`
 	Platform     string                 `json:"platform,omitempty"`
 	Architecture string                 `json:"architecture,omitempty"`
+	State        ProviderState          `json:"state,omitempty"`
+	Engines      []EngineObservation    `json:"engines,omitempty"`
 	Capabilities []Capability           `json:"capabilities,omitempty"`
 	Runtimes     []RuntimeObservation   `json:"runtimes,omitempty"`
 	Composer     []ComposerObservation  `json:"composer,omitempty"`

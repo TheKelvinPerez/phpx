@@ -250,11 +250,30 @@ func formatProjectFacts(analysis app.Analysis) string {
 func formatProviderObservation(observation model.ProviderObservation) string {
 	lines := []string{
 		fmt.Sprintf("Provider observation: %s", observation.Provider),
-		fmt.Sprintf(
-			"Platform: %s/%s",
-			observation.Platform,
-			observation.Architecture,
-		),
+		fmt.Sprintf("Available: %s", yesNo(observation.Available)),
+	}
+	if observation.Version != "" {
+		lines = append(lines, fmt.Sprintf("Version: %s", observation.Version))
+	}
+	if observation.State != "" {
+		lines = append(lines, fmt.Sprintf("State: %s", observation.State))
+	}
+	if observation.Platform != "" || observation.Architecture != "" {
+		lines = append(
+			lines,
+			fmt.Sprintf(
+				"Platform: %s/%s",
+				observation.Platform,
+				observation.Architecture,
+			),
+		)
+	}
+	for _, engine := range observation.Engines {
+		description := strings.TrimSpace(engine.Name + " " + engine.Version)
+		if engine.Platform != "" {
+			description += ", " + engine.Platform
+		}
+		lines = append(lines, "Engine: "+description)
 	}
 	for _, runtime := range observation.Runtimes {
 		lines = append(
@@ -288,6 +307,14 @@ func formatProviderObservation(observation model.ProviderObservation) string {
 	)
 
 	return strings.Join(lines, "\n")
+}
+
+func yesNo(value bool) string {
+	if value {
+		return "yes"
+	}
+
+	return "no"
 }
 
 func formatDiagnostic(diagnostic model.Diagnostic) string {

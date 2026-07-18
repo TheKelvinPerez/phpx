@@ -10,6 +10,7 @@ import (
 
 	"github.com/elefantephp/elefante/internal/constraints"
 	"github.com/elefantephp/elefante/internal/model"
+	"github.com/elefantephp/elefante/internal/providers"
 )
 
 type Request struct {
@@ -20,6 +21,7 @@ type Request struct {
 	PreviousProvider string
 	DefaultProvider  string
 	Policy           model.PlanPolicy
+	ProviderPlans    map[string]providers.ProviderPlan
 }
 
 type requirementGroup struct {
@@ -36,6 +38,7 @@ func Build(request Request) (model.Plan, error) {
 	}
 
 	selection, observation, providerDiagnostics := selectProvider(request)
+	providerPlan := selectedProviderPlan(request.ProviderPlans, selection.Name)
 	resolutions, requirementDiagnostics, err := resolveRequirements(
 		request.Facts,
 		observation,
@@ -55,6 +58,10 @@ func Build(request Request) (model.Plan, error) {
 
 	diagnostics := cloneDiagnostics(request.Facts.Diagnostics)
 	diagnostics = append(diagnostics, providerDiagnostics...)
+	diagnostics = append(
+		diagnostics,
+		cloneDiagnostics(providerPlan.Diagnostics)...,
+	)
 	diagnostics = append(diagnostics, requirementDiagnostics...)
 	diagnostics = append(
 		diagnostics,
@@ -90,7 +97,11 @@ func Build(request Request) (model.Plan, error) {
 	if operation != model.OperationDoctor &&
 		observation != nil &&
 		!hasBlockingDiagnostic(diagnostics) {
-		actions := compatibleActions(result, *observation)
+		actions := compatibleActions(
+			result,
+			*observation,
+			providerPlan.Actions,
+		)
 		policyDiagnostics := actionPolicyDiagnostics(
 			result.Policy,
 			actions,
@@ -110,6 +121,25 @@ func Build(request Request) (model.Plan, error) {
 	result.Digest = digest
 
 	return result, nil
+}
+
+func selectedProviderPlan(
+	plans map[string]providers.ProviderPlan,
+	name string,
+) providers.ProviderPlan {
+	if name == "" {
+		return providers.ProviderPlan{}
+	}
+	if selected, found := plans[name]; found {
+		return selected
+	}
+	for candidate, providerPlan := range plans {
+		if strings.EqualFold(strings.TrimSpace(candidate), name) {
+			return providerPlan
+		}
+	}
+
+	return providers.ProviderPlan{}
 }
 
 func diagnosticsContain(
@@ -541,6 +571,7 @@ func bestCompatibleProvider(
 ) *model.ProviderObservation {
 	bestIndex := -1
 	bestScore := -1
+	bestReadiness := -1
 	tied := false
 	for index := range candidates {
 		resolutions, diagnostics, err := resolveRequirements(
@@ -569,12 +600,15 @@ func bestCompatibleProvider(
 		if !compatible {
 			continue
 		}
+		readiness := providerReadinessScore(candidates[index].State)
 		switch {
-		case score > bestScore:
+		case score > bestScore ||
+			(score == bestScore && readiness > bestReadiness):
 			bestIndex = index
 			bestScore = score
+			bestReadiness = readiness
 			tied = false
-		case score == bestScore:
+		case score == bestScore && readiness == bestReadiness:
 			tied = true
 		}
 	}
@@ -583,6 +617,17 @@ func bestCompatibleProvider(
 	}
 
 	return &candidates[bestIndex]
+}
+
+func providerReadinessScore(state model.ProviderState) int {
+	switch state {
+	case "", model.ProviderStateRunning:
+		return 2
+	case model.ProviderStateStopped:
+		return 1
+	default:
+		return 0
+	}
 }
 
 func providerByName(
@@ -1128,13 +1173,14 @@ func requirementSources(
 func compatibleActions(
 	result model.Plan,
 	observation model.ProviderObservation,
+	providerActions []model.PlanAction,
 ) []model.PlanAction {
 	composerIdentity := ""
 	if len(observation.Composer) > 0 {
 		composerIdentity = observation.Composer[0].Identity
 	}
 	composerTrust := composerActionTrust(result.Trust)
-	var actions []model.PlanAction
+	actions := clonePlanActions(providerActions)
 	for _, resolution := range result.Requirements {
 		if resolution.Status != model.ResolutionActionRequired {
 			continue
@@ -1222,6 +1268,8 @@ func compatibleActions(
 	}...)
 
 	for index := range actions {
+		actions[index].ID = ""
+		actions[index].Dependencies = nil
 		sortActionInputs(actions[index].Inputs)
 		sortActionOutputs(actions[index].ExpectedOutputs)
 	}
@@ -1246,6 +1294,27 @@ func compatibleActions(
 	}
 
 	return actions
+}
+
+func clonePlanActions(actions []model.PlanAction) []model.PlanAction {
+	result := make([]model.PlanAction, len(actions))
+	for index, action := range actions {
+		result[index] = action
+		result[index].Inputs = append(
+			[]model.ActionInput(nil),
+			action.Inputs...,
+		)
+		result[index].ExpectedOutputs = append(
+			[]model.ActionOutput(nil),
+			action.ExpectedOutputs...,
+		)
+		result[index].Dependencies = append(
+			[]string(nil),
+			action.Dependencies...,
+		)
+	}
+
+	return result
 }
 
 func composerTrustRequirements(
@@ -1377,13 +1446,13 @@ func actionPhase(kind model.ActionKind) int {
 	switch kind {
 	case model.ActionPrepareCache:
 		return 1
-	case model.ActionPrepareRuntime:
-		return 2
-	case model.ActionPrepareExtension:
-		return 3
-	case model.ActionPrepareComposer:
-		return 4
 	case model.ActionPrepareProvider:
+		return 2
+	case model.ActionPrepareRuntime:
+		return 3
+	case model.ActionPrepareExtension:
+		return 4
+	case model.ActionPrepareComposer:
 		return 5
 	case model.ActionInstallDependencies:
 		return 6

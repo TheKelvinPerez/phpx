@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/elefantephp/elefante/internal/app"
 	"github.com/elefantephp/elefante/internal/cli"
 	"github.com/elefantephp/elefante/internal/discovery"
+	"github.com/elefantephp/elefante/internal/executor"
 	"github.com/elefantephp/elefante/internal/model"
 )
 
@@ -106,6 +108,92 @@ func TestExecuteRedactsSecretsDerivedFromEnvironment(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "[REDACTED]") {
 		t.Fatalf("expected redaction marker, got %s", stdout.String())
+	}
+}
+
+func TestJSONRunPreservesChildExitAfterPostStartExecutionFailure(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	executionFailure := errors.New("synthetic post-start stream failure")
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return cliCompatibleFacts(), nil
+		},
+		Providers: providerSet(compatibleCLIProvider()),
+		ExecuteProcess: func(
+			context.Context,
+			executor.Command,
+			executor.Streams,
+		) (executor.Result, error) {
+			return executor.Result{
+				Started:  true,
+				ExitCode: 29,
+			}, executionFailure
+		},
+	})
+
+	exitCode := cli.Execute(
+		context.Background(),
+		cli.Dependencies{Application: application},
+		cli.Execution{
+			Arguments: []string{
+				"--json",
+				"--provider", "native",
+				"run",
+				"--",
+				"child",
+			},
+			Input:  strings.NewReader(""),
+			Output: &stdout,
+			Error:  &stderr,
+		},
+	)
+	if exitCode != 29 {
+		t.Fatalf(
+			"expected child exit 29, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout.String(),
+			stderr.String(),
+		)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("machine mode wrote raw stderr:\n%s", stderr.String())
+	}
+
+	var events []struct {
+		Type    model.EventType `json:"type"`
+		Payload json.RawMessage `json:"payload"`
+	}
+	for _, line := range strings.Split(strings.TrimSpace(stdout.String()), "\n") {
+		var event struct {
+			Type    model.EventType `json:"type"`
+			Payload json.RawMessage `json:"payload"`
+		}
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Fatalf("decode run failure event: %v", err)
+		}
+		events = append(events, event)
+	}
+	if len(events) != 3 ||
+		events[0].Type != model.EventStarted ||
+		events[1].Type != model.EventError ||
+		events[2].Type != model.EventCompleted {
+		t.Fatalf("unexpected post-start failure events %#v", events)
+	}
+	var completed model.CompletedPayload
+	if err := json.Unmarshal(events[2].Payload, &completed); err != nil {
+		t.Fatalf("decode post-start completion: %v", err)
+	}
+	if completed.Exit.Origin != model.ExitOriginChild ||
+		completed.Exit.Code != 29 {
+		t.Fatalf("post-start failure lost child completion %#v", completed)
 	}
 }
 

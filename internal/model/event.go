@@ -42,6 +42,11 @@ type CompletedPayload struct {
 	Exit Exit `json:"exit"`
 }
 
+type StreamPayload struct {
+	Encoding string `json:"encoding"`
+	Data     string `json:"data"`
+}
+
 type ApprovalRequiredPayload struct {
 	PlanDigest string             `json:"plan_digest"`
 	Effects    []EffectClass      `json:"effects"`

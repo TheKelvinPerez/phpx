@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"os"
-	"os/signal"
 	"syscall"
 
 	"github.com/elefantephp/elefante/internal/app"
@@ -21,19 +20,26 @@ import (
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, stop := executor.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
 	defer stop()
 
 	executablePath, _ := os.Executable()
+	processRunner := executor.OSRunner{}
 	registeredProviders := []providers.Provider{
 		ddev.New(),
 		native.New(native.Dependencies{
+			Runner:       processRunner,
 			ProviderPath: executablePath,
 		}),
 	}
 	dependencies := app.Dependencies{
-		Build:     version.Current(),
-		Providers: registeredProviders,
+		Build:          version.Current(),
+		Providers:      registeredProviders,
+		ExecuteProcess: processRunner.Run,
 	}
 	userPaths, pathErr := paths.CurrentUserPaths()
 	if pathErr != nil {
@@ -57,7 +63,7 @@ func main() {
 		actionService := app.NewSyncActionService(
 			app.SyncActionServiceDependencies{
 				Providers:       registeredProviders,
-				Runner:          executor.OSRunner{},
+				Runner:          processRunner,
 				AcquireComposer: managedComposer.Acquire,
 			},
 		)

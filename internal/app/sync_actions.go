@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/elefantephp/elefante/internal/composer"
@@ -227,7 +228,7 @@ func (service *SyncActionService) executeComposer(
 			"The selected provider returned an empty Composer execution specification.",
 		)
 	}
-	if _, err := service.runner.Output(ctx, executor.Command{
+	command := executor.Command{
 		Executable: specification.Executable,
 		Arguments: append(
 			[]string(nil),
@@ -238,11 +239,33 @@ func (service *SyncActionService) executeComposer(
 			[]string(nil),
 			specification.Environment...,
 		),
-	}); err != nil {
+	}
+	var executionErr error
+	if streamingRunner, ok := service.runner.(executor.StreamRunner); ok {
+		result, err := streamingRunner.Run(
+			ctx,
+			command,
+			executor.Streams{
+				Input:  execution.Input,
+				Output: execution.Output,
+				Error:  execution.Error,
+			},
+		)
+		executionErr = err
+		if executionErr == nil && result.ExitCode != 0 {
+			executionErr = fmt.Errorf(
+				"process exited with code %d",
+				result.ExitCode,
+			)
+		}
+	} else {
+		_, executionErr = service.runner.Output(ctx, command)
+	}
+	if executionErr != nil {
 		commandError := model.WrapError(
 			model.ErrorSync,
 			"Official Composer execution failed.",
-			err,
+			executionErr,
 		)
 		commandError.Provider = execution.Analysis.Plan.Provider.Name
 

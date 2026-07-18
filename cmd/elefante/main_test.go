@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/elefantephp/elefante/internal/model"
 )
@@ -490,6 +492,617 @@ func TestCompiledSyncPreflightFailuresDoNotMutate(t *testing.T) {
 		assertCompiledErrorCode(t, stdout, model.ErrorNetwork)
 		assertCompiledPreflightUnchanged(t, projectRoot, home, before)
 	})
+}
+
+func TestCompiledNativeSyncPreservesApprovedComposerSemanticsAndStreams(
+	t *testing.T,
+) {
+	binary := buildBinary(t)
+	projectRoot := compiledTrustedSyncProject(t)
+	home := t.TempDir()
+	invocationLog := filepath.Join(t.TempDir(), "composer-invocations.log")
+	nativePath := compiledNativeSyncToolPath(t)
+	t.Setenv("ELEFANTE_TEST_COMPOSER_LOG", invocationLog)
+	manifestPath := filepath.Join(projectRoot, "composer.json")
+	lockPath := filepath.Join(projectRoot, "composer.lock")
+	manifestBefore, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("read frozen manifest before sync: %v", err)
+	}
+	lockBefore, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatalf("read frozen lock before sync: %v", err)
+	}
+
+	exitCode, stdout, stderr := runCompiledWithHome(
+		t,
+		binary,
+		home,
+		nativePath,
+		"--json",
+		"--project", projectRoot,
+		"--provider", "native",
+		"--frozen",
+		"--non-interactive",
+		"sync",
+	)
+	if exitCode != 6 {
+		t.Fatalf(
+			"expected trusted sync approval exit 6, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	if _, err := os.Stat(invocationLog); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("unapproved Composer code reached execution: %v", err)
+	}
+	var approval model.ApprovalRequiredPayload
+	for _, event := range decodeCompiledEvents(t, stdout) {
+		if event.Type != model.EventApprovalRequired {
+			continue
+		}
+		if err := json.Unmarshal(event.Payload, &approval); err != nil {
+			t.Fatalf("decode trusted sync approval: %v", err)
+		}
+	}
+	trustClasses := make(map[model.TrustClass]bool)
+	for _, requirement := range approval.Trust {
+		trustClasses[requirement.Class] = true
+	}
+	if !trustClasses[model.TrustComposerScripts] ||
+		!trustClasses[model.TrustComposerPlugins] {
+		t.Fatalf(
+			"trusted sync approval omitted Composer code classes %#v",
+			approval,
+		)
+	}
+
+	exitCode, stdout, stderr = runCompiledWithHome(
+		t,
+		binary,
+		home,
+		nativePath,
+		"--project", projectRoot,
+		"--provider", "native",
+		"--frozen",
+		"--non-interactive",
+		"--yes",
+		"sync",
+	)
+	if exitCode != 0 {
+		t.Fatalf(
+			"expected approved native sync exit zero, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	for _, expected := range []string{
+		"composer-install-stdout",
+		"composer-platform-stdout",
+	} {
+		if !strings.Contains(stdout, expected) {
+			t.Fatalf(
+				"expected native sync stdout to stream %q, got:\n%s",
+				expected,
+				stdout,
+			)
+		}
+	}
+	for _, expected := range []string{
+		"composer-install-stderr",
+		"composer-platform-stderr",
+	} {
+		if !strings.Contains(stderr, expected) {
+			t.Fatalf(
+				"expected native sync stderr to stream %q, got:\n%s",
+				expected,
+				stderr,
+			)
+		}
+	}
+
+	invocations, err := os.ReadFile(invocationLog)
+	if err != nil {
+		t.Fatalf("read Composer invocation log: %v", err)
+	}
+	expectedInvocations := "install --no-interaction\ncheck-platform-reqs\n"
+	if string(invocations) != expectedInvocations {
+		t.Fatalf(
+			"approved frozen sync changed Composer semantics\nexpected:\n%s\ngot:\n%s",
+			expectedInvocations,
+			invocations,
+		)
+	}
+	if strings.Contains(string(invocations), "--no-scripts") ||
+		strings.Contains(string(invocations), "--no-plugins") {
+		t.Fatalf(
+			"approved Composer scripts or plugins were disabled:\n%s",
+			invocations,
+		)
+	}
+	manifestAfter, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("read frozen manifest after sync: %v", err)
+	}
+	lockAfter, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatalf("read frozen lock after sync: %v", err)
+	}
+	if !bytes.Equal(manifestAfter, manifestBefore) ||
+		!bytes.Equal(lockAfter, lockBefore) {
+		t.Fatal("frozen native sync changed Composer project files")
+	}
+}
+
+func TestCompiledNativeSyncCompletesLockedSupportedFixture(t *testing.T) {
+	if _, err := exec.LookPath("php"); err != nil {
+		t.Skip("local PHP executable is unavailable")
+	}
+	if _, err := exec.LookPath("composer"); err != nil {
+		t.Skip("local Composer executable is unavailable")
+	}
+
+	binary := buildBinary(t)
+	projectRoot := t.TempDir()
+	for _, name := range []string{"composer.json", "composer.lock"} {
+		copyRuntimeFixture(t, projectRoot, "native-sync", name)
+	}
+	home := t.TempDir()
+	nativePath := compiledNativeToolPath(t)
+	lockPath := filepath.Join(projectRoot, "composer.lock")
+	lockBefore, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatalf("read supported fixture lock before sync: %v", err)
+	}
+
+	exitCode, stdout, stderr := runCompiledWithHome(
+		t,
+		binary,
+		home,
+		nativePath,
+		"--project", projectRoot,
+		"--provider", "native",
+		"--frozen",
+		"--non-interactive",
+		"--yes",
+		"sync",
+	)
+	if exitCode != 0 {
+		t.Fatalf(
+			"expected locked native sync exit zero, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	combinedStreams := stdout + stderr
+	if !strings.Contains(
+		combinedStreams,
+		"Installing dependencies from lock file",
+	) ||
+		!strings.Contains(
+			combinedStreams,
+			"checking platform requirements",
+		) {
+		t.Fatalf(
+			"native sync did not expose install and platform verification\nstdout:\n%s\nstderr:\n%s",
+			stdout,
+			stderr,
+		)
+	}
+	if _, err := os.Stat(
+		filepath.Join(projectRoot, "vendor", "autoload.php"),
+	); err != nil {
+		t.Fatalf("native sync did not install the locked fixture: %v", err)
+	}
+	lockAfter, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatalf("read supported fixture lock after sync: %v", err)
+	}
+	if !bytes.Equal(lockAfter, lockBefore) {
+		t.Fatal("frozen supported fixture sync changed composer.lock")
+	}
+}
+
+func TestCompiledNativeRunPreservesArgumentsDirectoryAndRawStreams(
+	t *testing.T,
+) {
+	binary := buildBinary(t)
+	projectRoot := compiledRunProject(t)
+	home := t.TempDir()
+	nativePath := compiledNativeRunToolPath(t)
+
+	exitCode, stdout, stderr := runCompiledWithHome(
+		t,
+		binary,
+		home,
+		nativePath,
+		"--project", projectRoot,
+		"--provider", "native",
+		"run",
+		"--",
+		"child-proof",
+		"space value",
+		"$(printf unsafe)",
+		"",
+	)
+	if exitCode != 0 {
+		t.Fatalf(
+			"expected native run exit zero, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	resolvedProjectRoot, err := filepath.EvalSymlinks(projectRoot)
+	if err != nil {
+		t.Fatalf("resolve run fixture root: %v", err)
+	}
+	expectedStdout := "child-arguments=<space value>|<$(printf unsafe)>|<>\n" +
+		"child-directory=" + resolvedProjectRoot + "\n"
+	if stdout != expectedStdout {
+		t.Fatalf(
+			"native run changed raw stdout\nexpected:\n%s\ngot:\n%s",
+			expectedStdout,
+			stdout,
+		)
+	}
+	if stderr != "child-stderr\n" {
+		t.Fatalf("native run changed raw stderr: %q", stderr)
+	}
+}
+
+func TestCompiledNativeRunRequiresSeparatorAndPreservesChildExit(t *testing.T) {
+	binary := buildBinary(t)
+	projectRoot := compiledRunProject(t)
+	home := t.TempDir()
+	nativePath := compiledNativeRunToolPath(t)
+
+	exitCode, stdout, stderr := runCompiledWithHome(
+		t,
+		binary,
+		home,
+		nativePath,
+		"--project", projectRoot,
+		"--provider", "native",
+		"run",
+		"child-proof",
+	)
+	if exitCode != 2 {
+		t.Fatalf(
+			"expected missing separator exit 2, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	if stdout != "" ||
+		!strings.Contains(stderr, "requires the command separator") {
+		t.Fatalf(
+			"unexpected missing separator response\nstdout:\n%s\nstderr:\n%s",
+			stdout,
+			stderr,
+		)
+	}
+
+	exitCode, stdout, stderr = runCompiledWithHome(
+		t,
+		binary,
+		home,
+		nativePath,
+		"--project", projectRoot,
+		"--provider", "native",
+		"run",
+		"--",
+		"child-exit",
+	)
+	if exitCode != 37 {
+		t.Fatalf(
+			"expected child exit 37, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	if stdout != "child-before-exit\n" ||
+		stderr != "child-error-before-exit\n" {
+		t.Fatalf(
+			"nonzero child streams changed\nstdout:\n%s\nstderr:\n%s",
+			stdout,
+			stderr,
+		)
+	}
+
+	exitCode, stdout, stderr = runCompiledWithHome(
+		t,
+		binary,
+		home,
+		nativePath,
+		"--json",
+		"--project", projectRoot,
+		"--provider", "native",
+		"run",
+		"--",
+		"child-exit",
+	)
+	if exitCode != 37 || stderr != "" {
+		t.Fatalf(
+			"expected machine child exit 37, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	events := decodeCompiledEvents(t, stdout)
+	var completed model.CompletedPayload
+	if err := json.Unmarshal(
+		events[len(events)-1].Payload,
+		&completed,
+	); err != nil {
+		t.Fatalf("decode nonzero child completion: %v", err)
+	}
+	if completed.Exit.Origin != model.ExitOriginChild ||
+		completed.Exit.Code != 37 {
+		t.Fatalf("machine nonzero exit lost child origin %#v", completed)
+	}
+	if got := reconstructChildStream(
+		t,
+		events,
+		model.EventStdout,
+	); string(got) != "child-before-exit\n" {
+		t.Fatalf("machine nonzero stdout changed: %q", got)
+	}
+	if got := reconstructChildStream(
+		t,
+		events,
+		model.EventStderr,
+	); string(got) != "child-error-before-exit\n" {
+		t.Fatalf("machine nonzero stderr changed: %q", got)
+	}
+}
+
+func TestCompiledNativeJSONRunEncodesReconstructableChildStreams(t *testing.T) {
+	binary := buildBinary(t)
+	projectRoot := compiledRunProject(t)
+	home := t.TempDir()
+	nativePath := compiledNativeRunToolPath(t)
+
+	exitCode, stdout, stderr := runCompiledWithHome(
+		t,
+		binary,
+		home,
+		nativePath,
+		"--json",
+		"--project", projectRoot,
+		"--provider", "native",
+		"run",
+		"--",
+		"child-binary",
+	)
+	if exitCode != 0 {
+		t.Fatalf(
+			"expected JSON child exit zero, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	if stderr != "" {
+		t.Fatalf("machine mode leaked raw standard error: %q", stderr)
+	}
+
+	events := decodeCompiledEvents(t, stdout)
+	if len(events) < 4 ||
+		events[0].Type != model.EventStarted ||
+		events[len(events)-1].Type != model.EventCompleted {
+		t.Fatalf("unexpected JSON run event sequence %#v", events)
+	}
+	for index, event := range events {
+		if event.Sequence != uint64(index+1) ||
+			event.Command != "run" {
+			t.Fatalf("unexpected JSON run event %d: %#v", index+1, event)
+		}
+	}
+	reconstructedStdout := reconstructChildStream(
+		t,
+		events,
+		model.EventStdout,
+	)
+	reconstructedStderr := reconstructChildStream(
+		t,
+		events,
+		model.EventStderr,
+	)
+	expectedStdout := append(
+		[]byte("utf8-line\n"),
+		[]byte{0xff, 0x00, 'b', 'i', 'n', 'a', 'r', 'y', '-', 't', 'a', 'i', 'l', '\n'}...,
+	)
+	if !bytes.Equal(reconstructedStdout, expectedStdout) {
+		t.Fatalf(
+			"machine stdout events cannot reconstruct child bytes\nexpected: %v\ngot:      %v",
+			expectedStdout,
+			reconstructedStdout,
+		)
+	}
+	expectedStderr := []byte("child-binary-stderr\n")
+	if !bytes.Equal(reconstructedStderr, expectedStderr) {
+		t.Fatalf(
+			"machine stderr events cannot reconstruct child bytes\nexpected: %v\ngot:      %v",
+			expectedStderr,
+			reconstructedStderr,
+		)
+	}
+	var completed model.CompletedPayload
+	if err := json.Unmarshal(
+		events[len(events)-1].Payload,
+		&completed,
+	); err != nil {
+		t.Fatalf("decode JSON run completion: %v", err)
+	}
+	if completed.Exit.Origin != model.ExitOriginChild ||
+		completed.Exit.Code != 0 {
+		t.Fatalf("JSON run did not identify the child exit %#v", completed)
+	}
+}
+
+func TestCompiledNativeRunForwardsInterruptToChild(t *testing.T) {
+	binary := buildBinary(t)
+	projectRoot := compiledRunProject(t)
+	home := t.TempDir()
+	nativePath := compiledNativeRunToolPath(t)
+	readyPath := filepath.Join(t.TempDir(), "child-ready")
+
+	command := exec.Command(
+		binary,
+		"--project", projectRoot,
+		"--provider", "native",
+		"run",
+		"--",
+		"child-signal",
+	)
+	command.Env = environmentWithOverrides(os.Environ(), map[string]string{
+		"ELEFANTE_TEST_READY_FILE": readyPath,
+		"HOME":                     home,
+		"PATH":                     nativePath,
+		"XDG_CACHE_HOME":           filepath.Join(home, "xdg-cache"),
+		"XDG_CONFIG_HOME":          filepath.Join(home, "xdg-config"),
+		"XDG_STATE_HOME":           filepath.Join(home, "xdg-state"),
+	})
+	command.Stdin = strings.NewReader("")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+
+	if err := command.Start(); err != nil {
+		t.Fatalf("start signal forwarding proof: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = command.Process.Kill()
+	})
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(readyPath); err == nil {
+			break
+		} else if !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("inspect child readiness: %v", err)
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf(
+				"child did not become ready\nstdout:\n%s\nstderr:\n%s",
+				stdout.String(),
+				stderr.String(),
+			)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := command.Process.Signal(os.Interrupt); err != nil {
+		t.Fatalf("interrupt Elefante process: %v", err)
+	}
+	err := command.Wait()
+	var exitError *exec.ExitError
+	if !errors.As(err, &exitError) {
+		t.Fatalf(
+			"expected forwarded child exit, got %v\nstdout:\n%s\nstderr:\n%s",
+			err,
+			stdout.String(),
+			stderr.String(),
+		)
+	}
+	if exitError.ExitCode() != 23 {
+		t.Fatalf(
+			"expected interrupt handled child exit 23, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitError.ExitCode(),
+			stdout.String(),
+			stderr.String(),
+		)
+	}
+	if stdout.String() != "child-ready\nchild-signal=interrupt\n" ||
+		stderr.Len() != 0 {
+		t.Fatalf(
+			"forwarded interrupt changed child streams\nstdout:\n%s\nstderr:\n%s",
+			stdout.String(),
+			stderr.String(),
+		)
+	}
+}
+
+func TestCompiledNativeRunPreservesSignalExit(t *testing.T) {
+	binary := buildBinary(t)
+	projectRoot := compiledRunProject(t)
+	home := t.TempDir()
+	nativePath := compiledNativeRunToolPath(t)
+
+	exitCode, stdout, stderr := runCompiledWithHome(
+		t,
+		binary,
+		home,
+		nativePath,
+		"--project", projectRoot,
+		"--provider", "native",
+		"run",
+		"--",
+		"child-terminate",
+	)
+	if exitCode != 143 {
+		t.Fatalf(
+			"expected signal exit 143, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	if stdout != "child-before-signal\n" || stderr != "" {
+		t.Fatalf(
+			"signaled child streams changed\nstdout:\n%s\nstderr:\n%s",
+			stdout,
+			stderr,
+		)
+	}
+}
+
+func TestCompiledNativeJSONRunReconstructsLargeOutput(t *testing.T) {
+	binary := buildBinary(t)
+	projectRoot := compiledRunProject(t)
+	home := t.TempDir()
+	nativePath := compiledNativeRunToolPath(t)
+
+	exitCode, stdout, stderr := runCompiledWithHome(
+		t,
+		binary,
+		home,
+		nativePath,
+		"--json",
+		"--project", projectRoot,
+		"--provider", "native",
+		"run",
+		"--",
+		"child-large",
+	)
+	if exitCode != 0 || stderr != "" {
+		t.Fatalf(
+			"large JSON child failed with exit %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	reconstructed := reconstructChildStream(
+		t,
+		decodeCompiledEvents(t, stdout),
+		model.EventStdout,
+	)
+	line := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
+	expected := []byte(strings.Repeat(line, 4096))
+	if !bytes.Equal(reconstructed, expected) {
+		t.Fatalf(
+			"large child output changed, expected %d bytes, got %d",
+			len(expected),
+			len(reconstructed),
+		)
+	}
 }
 
 func TestCompiledBinaryRegistersDDEVProvider(t *testing.T) {
@@ -1118,6 +1731,238 @@ func compiledSyncProject(t *testing.T) string {
 	return projectRoot
 }
 
+func compiledTrustedSyncProject(t *testing.T) string {
+	t.Helper()
+
+	projectRoot := t.TempDir()
+	manifest := `{
+    "name": "acme/trusted-sync",
+    "require": {
+        "php": ">=8.0",
+        "ext-json": "*"
+    },
+    "scripts": {
+        "post-install-cmd": "Acme\\Setup::run"
+    }
+}
+`
+	lock := `{
+    "content-hash": "00000000000000000000000000000000",
+    "packages": [
+        {
+            "name": "acme/plugin",
+            "version": "1.0.0",
+            "type": "composer-plugin",
+            "require": {
+                "php": ">=8.0"
+            }
+        }
+    ],
+    "packages-dev": [],
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.6.0"
+}
+`
+	for name, content := range map[string]string{
+		"composer.json": manifest,
+		"composer.lock": lock,
+	} {
+		if err := os.WriteFile(
+			filepath.Join(projectRoot, name),
+			[]byte(content),
+			0o644,
+		); err != nil {
+			t.Fatalf("write trusted synchronization fixture %s: %v", name, err)
+		}
+	}
+
+	return projectRoot
+}
+
+func compiledRunProject(t *testing.T) string {
+	t.Helper()
+
+	projectRoot := t.TempDir()
+	content := `{
+    "name": "acme/run-proof",
+    "require": {
+        "php": ">=8.0",
+        "ext-json": "*"
+    }
+}
+`
+	if err := os.WriteFile(
+		filepath.Join(projectRoot, "composer.json"),
+		[]byte(content),
+		0o644,
+	); err != nil {
+		t.Fatalf("write run fixture: %v", err)
+	}
+
+	return projectRoot
+}
+
+func compiledNativeSyncToolPath(t *testing.T) string {
+	t.Helper()
+
+	directory := t.TempDir()
+	php := `#!/bin/sh
+if [ "$1" = "-r" ]; then
+    printf '%s\n' '{"version":"8.5.0","sapi":"cli","binary":"php","extensions":[{"name":"json","version":"8.5.0"}]}'
+    exit 0
+fi
+exit 64
+`
+	composer := `#!/bin/sh
+if [ "$1" = "--version" ]; then
+    printf '%s\n' 'Composer version 2.9.5 2026-01-29 11:40:53'
+    exit 0
+fi
+printf '%s\n' "$*" >> "$ELEFANTE_TEST_COMPOSER_LOG"
+if [ "$1" = "install" ]; then
+    printf '%s\n' 'composer-install-stdout'
+    printf '%s\n' 'composer-install-stderr' >&2
+    exit 0
+fi
+if [ "$1" = "check-platform-reqs" ]; then
+    printf '%s\n' 'composer-platform-stdout'
+    printf '%s\n' 'composer-platform-stderr' >&2
+    exit 0
+fi
+exit 64
+`
+	for name, content := range map[string]string{
+		"php":      php,
+		"composer": composer,
+	} {
+		if err := os.WriteFile(
+			filepath.Join(directory, name),
+			[]byte(content),
+			0o755,
+		); err != nil {
+			t.Fatalf("write fake native %s executable: %v", name, err)
+		}
+	}
+
+	return directory
+}
+
+func compiledNativeRunToolPath(t *testing.T) string {
+	t.Helper()
+
+	directory := t.TempDir()
+	php := `#!/bin/sh
+if [ "$1" = "-r" ]; then
+    printf '%s\n' '{"version":"8.5.0","sapi":"cli","binary":"php","extensions":[{"name":"json","version":"8.5.0"}]}'
+    exit 0
+fi
+exit 64
+`
+	composer := `#!/bin/sh
+if [ "$1" = "--version" ]; then
+    printf '%s\n' 'Composer version 2.9.5 2026-01-29 11:40:53'
+    exit 0
+fi
+exit 64
+`
+	child := `#!/bin/sh
+printf 'child-arguments=<%s>|<%s>|<%s>\n' "$1" "$2" "$3"
+printf 'child-directory=%s\n' "$(pwd -P)"
+printf '%s\n' 'child-stderr' >&2
+`
+	childExit := `#!/bin/sh
+printf '%s\n' 'child-before-exit'
+printf '%s\n' 'child-error-before-exit' >&2
+exit 37
+`
+	childBinary := `#!/bin/sh
+printf '%s\n' 'utf8-line'
+printf '\377\000binary-tail\n'
+printf '%s\n' 'child-binary-stderr' >&2
+`
+	childSignal := `#!/bin/sh
+trap 'printf "%s\n" "child-signal=interrupt"; exit 23' INT
+trap 'printf "%s\n" "child-signal=terminated"; exit 24' TERM
+printf '%s\n' 'child-ready'
+: > "$ELEFANTE_TEST_READY_FILE"
+while :; do
+    /bin/sleep 1
+done
+`
+	childTerminate := `#!/bin/sh
+printf '%s\n' 'child-before-signal'
+kill -TERM $$
+`
+	childLarge := `#!/bin/sh
+index=0
+while [ "$index" -lt 4096 ]; do
+    printf '%s\n' '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    index=$((index + 1))
+done
+`
+	for name, content := range map[string]string{
+		"php":             php,
+		"composer":        composer,
+		"child-proof":     child,
+		"child-exit":      childExit,
+		"child-binary":    childBinary,
+		"child-signal":    childSignal,
+		"child-terminate": childTerminate,
+		"child-large":     childLarge,
+	} {
+		if err := os.WriteFile(
+			filepath.Join(directory, name),
+			[]byte(content),
+			0o755,
+		); err != nil {
+			t.Fatalf("write fake native %s executable: %v", name, err)
+		}
+	}
+
+	return directory
+}
+
+func reconstructChildStream(
+	t *testing.T,
+	events []compiledEvent,
+	eventType model.EventType,
+) []byte {
+	t.Helper()
+
+	var reconstructed []byte
+	for _, event := range events {
+		if event.Type != eventType {
+			continue
+		}
+		var payload struct {
+			Encoding string `json:"encoding"`
+			Data     string `json:"data"`
+		}
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			t.Fatalf("decode %s payload: %v", eventType, err)
+		}
+		switch payload.Encoding {
+		case "utf8":
+			reconstructed = append(reconstructed, []byte(payload.Data)...)
+		case "base64":
+			decoded, err := base64.StdEncoding.DecodeString(payload.Data)
+			if err != nil {
+				t.Fatalf("decode %s base64 payload: %v", eventType, err)
+			}
+			reconstructed = append(reconstructed, decoded...)
+		default:
+			t.Fatalf(
+				"unexpected %s payload encoding %q",
+				eventType,
+				payload.Encoding,
+			)
+		}
+	}
+
+	return reconstructed
+}
+
 func runCompiledWithHome(
 	t *testing.T,
 	binary string,
@@ -1300,6 +2145,35 @@ func copyComposerFixture(
 	target := filepath.Join(projectRoot, name)
 	if err := os.WriteFile(target, content, 0o644); err != nil {
 		t.Fatalf("write Composer fixture %s: %v", target, err)
+	}
+}
+
+func copyRuntimeFixture(
+	t *testing.T,
+	projectRoot string,
+	fixture string,
+	name string,
+) {
+	t.Helper()
+
+	source := filepath.Join(
+		repositoryRoot(t),
+		"testdata",
+		"fixtures",
+		"runtime",
+		fixture,
+		name,
+	)
+	content, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read runtime fixture %s: %v", source, err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(projectRoot, name),
+		content,
+		0o644,
+	); err != nil {
+		t.Fatalf("write runtime fixture %s: %v", name, err)
 	}
 }
 

@@ -8,9 +8,9 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 11, Official Composer Acquisition And Sync Engine, complete
+Current phase: Phase 12, Native Sync And Run, complete
 
-Next phase: Phase 12, Native Sync And Run
+Next phase: Phase 13, DDEV Sync And Run
 
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
@@ -360,10 +360,10 @@ Dependencies: Phase 11 completed
 
 Completion Criteria:
 
-* [ ] Native sync completes a locked supported fixture.
-* [ ] Run preserves every child exit code after start.
-* [ ] Arguments never pass through implicit shell interpolation.
-* [ ] Machine stream events reconstruct child output correctly.
+* [x] Native sync completes a locked supported fixture.
+* [x] Run preserves every child exit code after start.
+* [x] Arguments never pass through implicit shell interpolation.
+* [x] Machine stream events reconstruct child output correctly.
 
 ## Phase 13: DDEV Sync And Run
 

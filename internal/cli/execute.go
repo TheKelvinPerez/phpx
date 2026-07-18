@@ -26,6 +26,19 @@ func Execute(ctx context.Context, dependencies Dependencies, execution Execution
 	commandName := selectedCommand(execution.Arguments)
 	renderer := newRenderer(execution, commandName)
 	dependencies.Renderer = renderer
+	state := &commandState{}
+	dependencies.state = state
+	dependencies.childOutput = execution.Output
+	dependencies.childError = execution.Error
+	if streamRenderer, ok := renderer.(childStreamRenderer); ok &&
+		requestsJSON(execution.Arguments) {
+		dependencies.childOutput = rendererStreamWriter{
+			write: streamRenderer.Stdout,
+		}
+		dependencies.childError = rendererStreamWriter{
+			write: streamRenderer.Stderr,
+		}
+	}
 	dependencies.AllowPrompts = !requestsJSON(execution.Arguments) &&
 		(execution.InputIsTerminal || terminalInput(execution.Input))
 
@@ -59,6 +72,9 @@ func Execute(ctx context.Context, dependencies Dependencies, execution Execution
 		}
 
 		exit := model.ExitForError(commandError)
+		if state.exit != nil {
+			exit = *state.exit
+		}
 		if renderErr := renderer.Completed(exit); renderErr != nil {
 			return model.ExitCode(model.WrapError(
 				model.ErrorInternal,
@@ -74,6 +90,9 @@ func Execute(ctx context.Context, dependencies Dependencies, execution Execution
 		Origin: model.ExitOriginElefante,
 		Code:   0,
 	}
+	if state.exit != nil {
+		exit = *state.exit
+	}
 	if err := renderer.Completed(exit); err != nil {
 		return model.ExitCode(model.WrapError(
 			model.ErrorInternal,
@@ -82,7 +101,28 @@ func Execute(ctx context.Context, dependencies Dependencies, execution Execution
 		))
 	}
 
-	return 0
+	return exit.Code
+}
+
+type childStreamRenderer interface {
+	Stdout([]byte) error
+	Stderr([]byte) error
+}
+
+type rendererStreamWriter struct {
+	write func([]byte) error
+}
+
+func (writer rendererStreamWriter) Write(content []byte) (int, error) {
+	if len(content) == 0 {
+		return 0, nil
+	}
+	cloned := append([]byte(nil), content...)
+	if err := writer.write(cloned); err != nil {
+		return 0, err
+	}
+
+	return len(content), nil
 }
 
 func terminalInput(input io.Reader) bool {

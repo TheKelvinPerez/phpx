@@ -1,7 +1,7 @@
 GO ?= go
 SMOKE_BINARY := ./tmp/elefante-phase-1
 
-.PHONY: test test-race test-composer-integration test-ddev-integration vet smoke verify
+.PHONY: test test-race test-composer-integration test-native-integration test-ddev-integration vet smoke verify
 
 test:
 	$(GO) test ./...
@@ -11,6 +11,9 @@ test-race:
 
 test-composer-integration:
 	ELEFANTE_COMPOSER_INTEGRATION=1 $(GO) test ./internal/app -run TestOfficialComposerInstallAndPlatformVerificationIntegration -count=1
+
+test-native-integration:
+	$(GO) test ./cmd/elefante -run 'TestCompiledNative(Sync|Run|JSONRun)' -count=1
 
 test-ddev-integration:
 	ELEFANTE_DDEV_INTEGRATION=1 $(GO) test -tags=integration ./internal/providers/ddev -run TestDDEVIntegration -count=1

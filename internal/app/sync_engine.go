@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/elefantephp/elefante/internal/model"
@@ -27,6 +28,9 @@ type SyncActionExecution struct {
 	Analysis       Analysis
 	Action         model.PlanAction
 	NonInteractive bool
+	Input          io.Reader
+	Output         io.Writer
+	Error          io.Writer
 }
 
 type SyncActionResult struct {
@@ -73,6 +77,9 @@ type SyncExecution struct {
 	Analysis       Analysis
 	NonInteractive bool
 	TrustApproved  bool
+	Input          io.Reader
+	Output         io.Writer
+	Error          io.Writer
 }
 
 type SyncResult struct {
@@ -236,6 +243,9 @@ func (engine *SyncEngine) Apply(
 					Analysis:       execution.Analysis,
 					Action:         action,
 					NonInteractive: execution.NonInteractive,
+					Input:          execution.Input,
+					Output:         execution.Output,
+					Error:          execution.Error,
 				},
 			)
 		}

@@ -1,9 +1,11 @@
 package output
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/elefantephp/elefante/internal/model"
 	"github.com/elefantephp/elefante/internal/security"
@@ -63,6 +65,14 @@ func (renderer *MachineRenderer) Result(result Result) error {
 	return renderer.emit(model.EventResult, result.Payload)
 }
 
+func (renderer *MachineRenderer) Stdout(content []byte) error {
+	return renderer.stream(model.EventStdout, content)
+}
+
+func (renderer *MachineRenderer) Stderr(content []byte) error {
+	return renderer.stream(model.EventStderr, content)
+}
+
 func (renderer *MachineRenderer) Error(commandError *model.Error) error {
 	return renderer.emit(model.EventError, commandError)
 }
@@ -71,6 +81,22 @@ func (renderer *MachineRenderer) Completed(exit model.Exit) error {
 	return renderer.emit(model.EventCompleted, model.CompletedPayload{
 		Exit: exit,
 	})
+}
+
+func (renderer *MachineRenderer) stream(
+	eventType model.EventType,
+	content []byte,
+) error {
+	payload := model.StreamPayload{
+		Encoding: "utf8",
+		Data:     string(content),
+	}
+	if !utf8.Valid(content) {
+		payload.Encoding = "base64"
+		payload.Data = base64.StdEncoding.EncodeToString(content)
+	}
+
+	return renderer.emit(eventType, payload)
 }
 
 func (renderer *MachineRenderer) emit(eventType model.EventType, payload any) error {

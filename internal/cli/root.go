@@ -18,6 +18,13 @@ type Dependencies struct {
 	Application  *app.Application
 	Renderer     output.Renderer
 	AllowPrompts bool
+	state        *commandState
+	childOutput  io.Writer
+	childError   io.Writer
+}
+
+type commandState struct {
+	exit *model.Exit
 }
 
 func NewRootCommand(dependencies Dependencies) *cobra.Command {
@@ -49,20 +56,92 @@ func NewRootCommand(dependencies Dependencies) *cobra.Command {
 	root.AddCommand(newVersionCommand(dependencies.Application, dependencies.Renderer))
 	root.AddCommand(newDoctorCommand(dependencies.Application, dependencies.Renderer))
 	root.AddCommand(newPlanCommand(dependencies.Application, dependencies.Renderer))
-	root.AddCommand(newSyncCommand(
-		dependencies.Application,
-		dependencies.Renderer,
-		dependencies.AllowPrompts,
-	))
+	root.AddCommand(newSyncCommand(dependencies))
+	root.AddCommand(newRunCommand(dependencies))
 
 	return root
 }
 
-func newSyncCommand(
-	application *app.Application,
-	renderer output.Renderer,
-	allowPrompts bool,
-) *cobra.Command {
+func newRunCommand(dependencies Dependencies) *cobra.Command {
+	return &cobra.Command{
+		Use:   "run -- <command> [arguments]",
+		Short: "Execute a command inside the selected environment",
+		Args: func(command *cobra.Command, arguments []string) error {
+			if command.ArgsLenAtDash() < 0 {
+				return model.NewError(
+					model.ErrorUsage,
+					"Run requires the command separator before the child command.",
+				).WithHint(
+					"Use elefante run -- <command> [arguments].",
+				)
+			}
+			if len(arguments) == 0 ||
+				strings.TrimSpace(arguments[0]) == "" {
+				return model.NewError(
+					model.ErrorUsage,
+					"Run requires a child executable after the command separator.",
+				)
+			}
+
+			return nil
+		},
+		RunE: func(command *cobra.Command, arguments []string) error {
+			projectPath, configPath, provider, err := analysisPaths(command)
+			if err != nil {
+				return err
+			}
+			result, err := dependencies.Application.Run(
+				command.Context(),
+				app.RunRequest{
+					ProjectPath: projectPath,
+					ConfigPath:  configPath,
+					Provider:    provider,
+					Arguments: append(
+						[]string(nil),
+						arguments...,
+					),
+					Input:  command.InOrStdin(),
+					Output: childOutput(dependencies, command),
+					Error:  childError(dependencies, command),
+				},
+			)
+			if dependencies.state != nil &&
+				result.Exit.Origin == model.ExitOriginChild {
+				exit := result.Exit
+				dependencies.state.exit = &exit
+			}
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	}
+}
+
+func childOutput(
+	dependencies Dependencies,
+	command *cobra.Command,
+) io.Writer {
+	if dependencies.childOutput != nil {
+		return dependencies.childOutput
+	}
+
+	return command.OutOrStdout()
+}
+
+func childError(
+	dependencies Dependencies,
+	command *cobra.Command,
+) io.Writer {
+	if dependencies.childError != nil {
+		return dependencies.childError
+	}
+
+	return command.ErrOrStderr()
+}
+
+func newSyncCommand(dependencies Dependencies) *cobra.Command {
 	return &cobra.Command{
 		Use:   "sync",
 		Short: "Apply an explicitly approved synchronization plan",
@@ -122,23 +201,32 @@ func newSyncCommand(
 				NonInteractive: nonInteractive,
 				Yes:            yes,
 				ApprovedPlan:   approvedPlan,
+				Input:          command.InOrStdin(),
+				Output:         childOutput(dependencies, command),
+				Error:          childError(dependencies, command),
 			}
-			analysis, syncErr := application.Sync(
+			analysis, syncErr := dependencies.Application.Sync(
 				command.Context(),
 				request,
 			)
 			if analysis.Plan.SchemaVersion != "" {
-				if err := renderAnalysis(renderer, analysis); err != nil {
+				if err := renderAnalysis(
+					dependencies.Renderer,
+					analysis,
+				); err != nil {
 					return err
 				}
 			}
 			if !isCommandError(syncErr, model.ErrorApprovalRequired) {
 				return syncErr
 			}
-			if err := renderApprovalRequired(renderer, analysis.Plan); err != nil {
+			if err := renderApprovalRequired(
+				dependencies.Renderer,
+				analysis.Plan,
+			); err != nil {
 				return err
 			}
-			if !allowPrompts || nonInteractive {
+			if !dependencies.AllowPrompts || nonInteractive {
 				return syncErr
 			}
 
@@ -159,10 +247,16 @@ func newSyncCommand(
 
 			request.ApprovedPlan = analysis.Plan.Digest
 			request.Yes = false
-			revalidated, syncErr := application.Sync(command.Context(), request)
+			revalidated, syncErr := dependencies.Application.Sync(
+				command.Context(),
+				request,
+			)
 			if revalidated.Plan.Digest != "" &&
 				revalidated.Plan.Digest != analysis.Plan.Digest {
-				if err := renderAnalysis(renderer, revalidated); err != nil {
+				if err := renderAnalysis(
+					dependencies.Renderer,
+					revalidated,
+				); err != nil {
 					return err
 				}
 			}

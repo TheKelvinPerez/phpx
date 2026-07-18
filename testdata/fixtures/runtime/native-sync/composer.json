@@ -1,0 +1,7 @@
+{
+    "name": "elefante/native-sync-fixture",
+    "require": {
+        "php": ">=8.0",
+        "ext-json": "*"
+    }
+}

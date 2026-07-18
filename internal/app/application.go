@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
+	"io"
 	"sort"
 	"strings"
 
 	"github.com/elefantephp/elefante/internal/composer"
 	"github.com/elefantephp/elefante/internal/discovery"
+	"github.com/elefantephp/elefante/internal/executor"
 	"github.com/elefantephp/elefante/internal/model"
 	"github.com/elefantephp/elefante/internal/plan"
 	"github.com/elefantephp/elefante/internal/providers"
@@ -19,6 +21,11 @@ type ApplySynchronization func(
 	context.Context,
 	SyncExecution,
 ) (SyncResult, error)
+type ExecuteProcess func(
+	context.Context,
+	executor.Command,
+	executor.Streams,
+) (executor.Result, error)
 
 type ManagedComposer interface {
 	Resolve(
@@ -37,6 +44,7 @@ type Dependencies struct {
 	ManagedComposer      ManagedComposer
 	ExecuteApprovedPlan  ExecuteApprovedPlan
 	ApplySynchronization ApplySynchronization
+	ExecuteProcess       ExecuteProcess
 }
 
 type Application struct {
@@ -45,6 +53,7 @@ type Application struct {
 	providers            []providers.Provider
 	managedComposer      ManagedComposer
 	applySynchronization ApplySynchronization
+	executeProcess       ExecuteProcess
 }
 
 type DoctorRequest struct {
@@ -71,12 +80,31 @@ type SyncRequest struct {
 	Yes            bool
 	ApprovedPlan   string
 	Confirmed      bool
+	Input          io.Reader
+	Output         io.Writer
+	Error          io.Writer
 }
 
 type Analysis struct {
 	Facts        model.ProjectFacts          `json:"facts"`
 	Observations []model.ProviderObservation `json:"observations"`
 	Plan         model.Plan                  `json:"plan"`
+}
+
+type RunRequest struct {
+	ProjectPath string
+	ConfigPath  string
+	Provider    string
+	Arguments   []string
+	Input       io.Reader
+	Output      io.Writer
+	Error       io.Writer
+}
+
+type RunResult struct {
+	Exit      model.Exit
+	Signal    string
+	Cancelled bool
 }
 
 func New(dependencies Dependencies) *Application {
@@ -116,6 +144,7 @@ func New(dependencies Dependencies) *Application {
 		providers:            append([]providers.Provider(nil), dependencies.Providers...),
 		managedComposer:      dependencies.ManagedComposer,
 		applySynchronization: applySynchronization,
+		executeProcess:       dependencies.ExecuteProcess,
 	}
 }
 
@@ -191,11 +220,118 @@ func (application *Application) Sync(
 		TrustApproved: request.Yes ||
 			request.ApprovedPlan != "" ||
 			request.Confirmed,
+		Input:  request.Input,
+		Output: request.Output,
+		Error:  request.Error,
 	}); err != nil {
 		return analysis, err
 	}
 
 	return analysis, nil
+}
+
+func (application *Application) Run(
+	ctx context.Context,
+	request RunRequest,
+) (RunResult, error) {
+	if len(request.Arguments) == 0 ||
+		strings.TrimSpace(request.Arguments[0]) == "" {
+		return RunResult{}, model.NewError(
+			model.ErrorUsage,
+			"Run requires a child executable after the command separator.",
+		)
+	}
+	analysis, err := application.analyze(ctx, analysisRequest{
+		ProjectPath: request.ProjectPath,
+		ConfigPath:  request.ConfigPath,
+		Provider:    request.Provider,
+		Operation:   model.OperationDoctor,
+		Policy: model.PlanPolicy{
+			Offline: true,
+			Frozen:  true,
+		},
+	})
+	if err != nil {
+		return RunResult{}, err
+	}
+	if err := BlockingPlanError(analysis.Plan); err != nil {
+		return RunResult{}, err
+	}
+	selected, err := application.selectedProvider(
+		analysis.Plan.Provider.Name,
+	)
+	if err != nil {
+		return RunResult{}, err
+	}
+	specification, err := selected.ExecutionSpec(
+		ctx,
+		providers.ExecutionRequest{
+			Executable: request.Arguments[0],
+			Arguments: append(
+				[]string(nil),
+				request.Arguments[1:]...,
+			),
+			WorkingDirectory: analysis.Facts.Identity.ApplicationRoot,
+		},
+	)
+	if err != nil {
+		return RunResult{}, err
+	}
+	if application.executeProcess == nil {
+		return RunResult{}, model.NewError(
+			model.ErrorInternal,
+			"Command execution is not configured.",
+		)
+	}
+	executed, err := application.executeProcess(
+		ctx,
+		executor.Command{
+			Executable: specification.Executable,
+			Arguments: append(
+				[]string(nil),
+				specification.Arguments...,
+			),
+			WorkingDirectory: specification.WorkingDirectory,
+			Environment: append(
+				[]string(nil),
+				specification.Environment...,
+			),
+		},
+		executor.Streams{
+			Input:  request.Input,
+			Output: request.Output,
+			Error:  request.Error,
+		},
+	)
+	result := RunResult{}
+	if executed.Started {
+		result = RunResult{
+			Exit: model.Exit{
+				Origin: model.ExitOriginChild,
+				Code:   executed.ExitCode,
+			},
+			Signal:    executed.Signal,
+			Cancelled: executed.Cancelled,
+		}
+	}
+	if err != nil {
+		commandError := model.WrapError(
+			model.ErrorProvider,
+			"Could not execute the command in the selected environment.",
+			err,
+		)
+		commandError.Provider = analysis.Plan.Provider.Name
+
+		return result, commandError
+	}
+	if !executed.Started {
+		return RunResult{}, model.NewError(
+			model.ErrorInternal,
+			"The process executor returned without starting the child command.",
+		)
+	}
+
+	return result, nil
 }
 
 type analysisRequest struct {
@@ -347,6 +483,26 @@ func providerObservationIndex(
 	}
 
 	return -1
+}
+
+func (application *Application) selectedProvider(
+	name string,
+) (providers.Provider, error) {
+	for _, candidate := range application.providers {
+		if strings.EqualFold(
+			strings.TrimSpace(candidate.Name()),
+			strings.TrimSpace(name),
+		) {
+			return candidate, nil
+		}
+	}
+	commandError := model.NewError(
+		model.ErrorProvider,
+		"The selected execution provider is not registered.",
+	)
+	commandError.Provider = name
+
+	return nil, commandError
 }
 
 func selectedPHPVersion(builtPlan model.Plan) string {

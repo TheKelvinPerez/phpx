@@ -28,6 +28,7 @@ func NewRootCommand(dependencies Dependencies) *cobra.Command {
 	}
 	root.PersistentFlags().Bool("json", false, "Emit newline delimited JSON events")
 	root.PersistentFlags().String("project", "", "Start project discovery from this path")
+	root.PersistentFlags().String("config", "", "Use this Elefante configuration file")
 
 	root.AddCommand(newVersionCommand(dependencies.Application, dependencies.Renderer))
 	root.AddCommand(newDoctorCommand(dependencies.Application, dependencies.Renderer))
@@ -49,8 +50,19 @@ func newDoctorCommand(application *app.Application, renderer output.Renderer) *c
 					err,
 				)
 			}
+			configPath, err := command.Flags().GetString("config")
+			if err != nil {
+				return model.WrapError(
+					model.ErrorInternal,
+					"Could not read the configuration path flag.",
+					err,
+				)
+			}
 
-			facts, err := application.Doctor(command.Context(), projectPath)
+			facts, err := application.Doctor(command.Context(), app.DoctorRequest{
+				ProjectPath: projectPath,
+				ConfigPath:  configPath,
+			})
 			if err != nil {
 				return err
 			}

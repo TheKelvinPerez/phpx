@@ -99,10 +99,56 @@ type ComposerFacts struct {
 	Scripts              []ComposerScript      `json:"scripts,omitempty"`
 }
 
+type FrameworkKind string
+
+const (
+	FrameworkGenericComposer    FrameworkKind = "generic_composer"
+	FrameworkLaravelApplication FrameworkKind = "laravel_application"
+	FrameworkLaravelPackage     FrameworkKind = "laravel_package"
+	FrameworkBedrockWordPress   FrameworkKind = "bedrock_wordpress"
+	FrameworkSymfonyApplication FrameworkKind = "symfony_application"
+)
+
+type FrameworkConfidence string
+
+const (
+	FrameworkConfidenceFallback FrameworkConfidence = "fallback"
+	FrameworkConfidenceMedium   FrameworkConfidence = "medium"
+	FrameworkConfidenceHigh     FrameworkConfidence = "high"
+)
+
+type FrameworkEvidence struct {
+	Kind        string          `json:"kind"`
+	Description string          `json:"description"`
+	Source      SourceReference `json:"source"`
+}
+
+type FrameworkFact struct {
+	Kind       FrameworkKind       `json:"kind"`
+	Confidence FrameworkConfidence `json:"confidence"`
+	Primary    bool                `json:"primary"`
+	Evidence   []FrameworkEvidence `json:"evidence"`
+}
+
+type VersionFileFact struct {
+	Runtime string          `json:"runtime"`
+	Version string          `json:"version"`
+	Source  SourceReference `json:"source"`
+}
+
+type ProviderMarkerFact struct {
+	Provider string          `json:"provider"`
+	Source   SourceReference `json:"source"`
+}
+
 type ProjectFacts struct {
-	StartingPath      ProjectPath        `json:"starting_path"`
-	Identity          ProjectIdentity    `json:"identity"`
-	Composer          ComposerFacts      `json:"composer"`
-	Diagnostics       []Diagnostic       `json:"diagnostics,omitempty"`
-	InputFingerprints []InputFingerprint `json:"input_fingerprints,omitempty"`
+	StartingPath      ProjectPath          `json:"starting_path"`
+	Identity          ProjectIdentity      `json:"identity"`
+	Composer          ComposerFacts        `json:"composer"`
+	Frameworks        []FrameworkFact      `json:"frameworks,omitempty"`
+	Configuration     ConfigFacts          `json:"configuration"`
+	VersionFiles      []VersionFileFact    `json:"version_files,omitempty"`
+	ProviderMarkers   []ProviderMarkerFact `json:"provider_markers,omitempty"`
+	Diagnostics       []Diagnostic         `json:"diagnostics,omitempty"`
+	InputFingerprints []InputFingerprint   `json:"input_fingerprints,omitempty"`
 }

@@ -9,12 +9,14 @@ import (
 	"sort"
 
 	"github.com/elefantephp/elefante/internal/composer"
+	"github.com/elefantephp/elefante/internal/frameworks"
 	"github.com/elefantephp/elefante/internal/model"
 	projectpaths "github.com/elefantephp/elefante/internal/paths"
 )
 
 type Request struct {
 	StartPath       string
+	ConfigPath      string
 	MaxMetadataSize int64
 }
 
@@ -44,6 +46,26 @@ func Discover(ctx context.Context, request Request) (model.ProjectFacts, error) 
 	if err != nil {
 		return model.ProjectFacts{}, err
 	}
+	if git != nil &&
+		(request.ConfigPath != "" || start.Directory == git.workspaceRoot) {
+		candidates, err := composerRootsUnder(candidateSearchRoot)
+		if err != nil {
+			return model.ProjectFacts{}, err
+		}
+		configuredRoot, configured, err := configuredComposerRoot(
+			request.ConfigPath,
+			candidateSearchRoot,
+			candidates,
+			request.MaxMetadataSize,
+		)
+		if err != nil {
+			return model.ProjectFacts{}, err
+		}
+		if configured {
+			composerRoot = configuredRoot
+			found = true
+		}
+	}
 	if !found {
 		candidates, err := composerRootsUnder(candidateSearchRoot)
 		if err != nil {
@@ -59,7 +81,19 @@ func Discover(ctx context.Context, request Request) (model.ProjectFacts, error) 
 		case 1:
 			composerRoot = candidates[0]
 		default:
-			return model.ProjectFacts{}, ambiguousComposerRoots(candidates)
+			configuredRoot, configured, err := configuredComposerRoot(
+				request.ConfigPath,
+				candidateSearchRoot,
+				candidates,
+				request.MaxMetadataSize,
+			)
+			if err != nil {
+				return model.ProjectFacts{}, err
+			}
+			if !configured {
+				return model.ProjectFacts{}, ambiguousComposerRoots(candidates)
+			}
+			composerRoot = configuredRoot
 		}
 	}
 
@@ -120,6 +154,39 @@ func Discover(ctx context.Context, request Request) (model.ProjectFacts, error) 
 	if err != nil {
 		return model.ProjectFacts{}, err
 	}
+	frameworkResult, err := frameworks.Detect(frameworks.Request{
+		ComposerRoot: identity.ComposerRoot,
+		Composer:     composerResult.Facts,
+	})
+	if err != nil {
+		return model.ProjectFacts{}, err
+	}
+	configuration, err := selectConfiguration(
+		request.ConfigPath,
+		metadataBoundary,
+		identity.ComposerRoot,
+		request.MaxMetadataSize,
+	)
+	if err != nil {
+		return model.ProjectFacts{}, err
+	}
+	configuration.validateComposerRoot(identity.ComposerRoot)
+	inputFingerprints = append(
+		inputFingerprints,
+		configuration.fingerprints...,
+	)
+	auxiliary, err := discoverAuxiliaryFacts(
+		identity.ComposerRoot,
+		metadataBoundary,
+		request.MaxMetadataSize,
+	)
+	if err != nil {
+		return model.ProjectFacts{}, err
+	}
+	inputFingerprints = append(
+		inputFingerprints,
+		auxiliary.fingerprints...,
+	)
 
 	return model.ProjectFacts{
 		StartingPath: model.ProjectPath{
@@ -127,9 +194,19 @@ func Discover(ctx context.Context, request Request) (model.ProjectFacts, error) 
 			Absolute: start.Absolute,
 			Resolved: start.Resolved,
 		},
-		Identity:          identity,
-		Composer:          composerResult.Facts,
-		Diagnostics:       composerResult.Diagnostics,
+		Identity:        identity,
+		Composer:        composerResult.Facts,
+		Frameworks:      frameworkResult.Facts,
+		Configuration:   configuration.facts,
+		VersionFiles:    auxiliary.versionFiles,
+		ProviderMarkers: auxiliary.providerMarkers,
+		Diagnostics: append(
+			append(
+				composerResult.Diagnostics,
+				frameworkResult.Diagnostics...,
+			),
+			configuration.diagnostics...,
+		),
 		InputFingerprints: inputFingerprints,
 	}, nil
 }

@@ -19,6 +19,11 @@ type Application struct {
 	discoverProject DiscoverProject
 }
 
+type DoctorRequest struct {
+	ProjectPath string
+	ConfigPath  string
+}
+
 func New(dependencies Dependencies) *Application {
 	discoverProject := dependencies.DiscoverProject
 	if discoverProject == nil {
@@ -37,9 +42,10 @@ func (application *Application) Version(context.Context) model.BuildInfo {
 
 func (application *Application) Doctor(
 	ctx context.Context,
-	projectPath string,
+	request DoctorRequest,
 ) (model.ProjectFacts, error) {
 	return application.discoverProject(ctx, discovery.Request{
-		StartPath: projectPath,
+		StartPath:  request.ProjectPath,
+		ConfigPath: request.ConfigPath,
 	})
 }

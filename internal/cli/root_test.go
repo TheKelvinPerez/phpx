@@ -7,6 +7,7 @@ import (
 
 	"github.com/elefantephp/elefante/internal/app"
 	"github.com/elefantephp/elefante/internal/cli"
+	"github.com/elefantephp/elefante/internal/discovery"
 	"github.com/elefantephp/elefante/internal/model"
 )
 
@@ -43,5 +44,46 @@ func TestCompleteCommandTreeExecutesInProcess(t *testing.T) {
 	}
 	if command.InOrStdin() != input {
 		t.Fatal("expected the injected input on the complete command tree")
+	}
+}
+
+func TestDoctorForwardsExplicitProjectAndConfigPaths(t *testing.T) {
+	var received discovery.Request
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			_ context.Context,
+			request discovery.Request,
+		) (model.ProjectFacts, error) {
+			received = request
+
+			return model.ProjectFacts{
+				Identity: model.ProjectIdentity{
+					ComposerRoot:  "/project",
+					WorkspaceRoot: "/project",
+					IdentityKey:   "sha256:test",
+				},
+			}, nil
+		},
+	})
+
+	_, _, _, err := executeCommand(
+		t,
+		context.Background(),
+		strings.NewReader(""),
+		cli.Dependencies{Application: application},
+		"--project",
+		"/project",
+		"--config",
+		"/project/custom.toml",
+		"doctor",
+	)
+	if err != nil {
+		t.Fatalf("execute doctor: %v", err)
+	}
+	if received.StartPath != "/project" {
+		t.Fatalf("expected project path, got %#v", received)
+	}
+	if received.ConfigPath != "/project/custom.toml" {
+		t.Fatalf("expected config path, got %#v", received)
 	}
 }

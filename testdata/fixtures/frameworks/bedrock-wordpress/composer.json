@@ -1,0 +1,9 @@
+{
+    "name": "roots/bedrock",
+    "type": "project",
+    "require": {
+        "php": ">=8.3",
+        "roots/bedrock-autoloader": "^1.0",
+        "roots/wordpress": "^6.8"
+    }
+}

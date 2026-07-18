@@ -603,6 +603,170 @@ func TestDiscoverParsesComposerAndLockFacts(t *testing.T) {
 	}
 }
 
+func TestDiscoverAddsFrameworkFactsWithoutBootingApplication(t *testing.T) {
+	projectRoot, err := filepath.Abs(filepath.Join(
+		"..",
+		"..",
+		"testdata",
+		"fixtures",
+		"frameworks",
+		"laravel-application",
+	))
+	if err != nil {
+		t.Fatalf("resolve framework fixture: %v", err)
+	}
+
+	facts, err := discovery.Discover(context.Background(), discovery.Request{
+		StartPath: projectRoot,
+	})
+	if err != nil {
+		t.Fatalf("discover project: %v", err)
+	}
+
+	var laravel *model.FrameworkFact
+	for index := range facts.Frameworks {
+		if facts.Frameworks[index].Kind == model.FrameworkLaravelApplication {
+			laravel = &facts.Frameworks[index]
+			break
+		}
+	}
+	if laravel == nil {
+		t.Fatalf("expected Laravel application fact, got %#v", facts.Frameworks)
+	}
+	if !laravel.Primary {
+		t.Fatal("expected Laravel application to be primary")
+	}
+}
+
+func TestDiscoverAddsVersionAndProviderMarkerFactsWithFingerprints(t *testing.T) {
+	projectRoot := t.TempDir()
+	writeFile(t, filepath.Join(projectRoot, "composer.json"), "{}\n")
+	writeFile(t, filepath.Join(projectRoot, ".php-version"), "8.4\n")
+	if err := os.MkdirAll(filepath.Join(projectRoot, ".ddev"), 0o755); err != nil {
+		t.Fatalf("create DDEV directory: %v", err)
+	}
+	writeFile(
+		t,
+		filepath.Join(projectRoot, ".ddev", "config.yaml"),
+		"name: example\n",
+	)
+	writeFile(t, filepath.Join(projectRoot, "herd.yml"), "php: 8.4\n")
+
+	resolvedProjectRoot, err := filepath.EvalSymlinks(projectRoot)
+	if err != nil {
+		t.Fatalf("resolve project root: %v", err)
+	}
+	facts, err := discovery.Discover(context.Background(), discovery.Request{
+		StartPath: projectRoot,
+	})
+	if err != nil {
+		t.Fatalf("discover project: %v", err)
+	}
+
+	if len(facts.VersionFiles) != 1 {
+		t.Fatalf("expected one version file fact, got %#v", facts.VersionFiles)
+	}
+	version := facts.VersionFiles[0]
+	if version.Runtime != "php" || version.Version != "8.4" {
+		t.Fatalf("unexpected PHP version fact %#v", version)
+	}
+	expectedVersionPath := filepath.Join(resolvedProjectRoot, ".php-version")
+	if version.Source.Path != expectedVersionPath {
+		t.Fatalf("expected version source %q, got %#v", expectedVersionPath, version.Source)
+	}
+
+	if len(facts.ProviderMarkers) != 2 {
+		t.Fatalf("expected two provider markers, got %#v", facts.ProviderMarkers)
+	}
+	if facts.ProviderMarkers[0].Provider != "ddev" ||
+		facts.ProviderMarkers[1].Provider != "herd" {
+		t.Fatalf("unexpected provider markers %#v", facts.ProviderMarkers)
+	}
+	if !hasInputFingerprint(
+		facts.InputFingerprints,
+		expectedVersionPath,
+		"php_version",
+	) {
+		t.Fatalf("expected PHP version fingerprint, got %#v", facts.InputFingerprints)
+	}
+	if !hasInputFingerprint(
+		facts.InputFingerprints,
+		filepath.Join(resolvedProjectRoot, ".ddev", "config.yaml"),
+		"provider_config",
+	) {
+		t.Fatalf("expected DDEV fingerprint, got %#v", facts.InputFingerprints)
+	}
+}
+
+func TestDiscoverRejectsVersionFileSymlinkOutsideProjectBoundary(t *testing.T) {
+	projectRoot := t.TempDir()
+	outsideRoot := t.TempDir()
+	writeFile(t, filepath.Join(projectRoot, "composer.json"), "{}\n")
+	outsideVersion := filepath.Join(outsideRoot, ".php-version")
+	writeFile(t, outsideVersion, "8.4\n")
+	if err := os.Symlink(
+		outsideVersion,
+		filepath.Join(projectRoot, ".php-version"),
+	); err != nil {
+		t.Fatalf("create version file symlink: %v", err)
+	}
+
+	_, err := discovery.Discover(context.Background(), discovery.Request{
+		StartPath: projectRoot,
+	})
+
+	var commandError *model.Error
+	if !errors.As(err, &commandError) {
+		t.Fatalf("expected typed discovery error, got %v", err)
+	}
+	if !strings.Contains(commandError.Message, "outside the project boundary") {
+		t.Fatalf("expected boundary error, got %#v", commandError)
+	}
+	if len(commandError.Sources) != 1 ||
+		commandError.Sources[0].Kind != "php_version" {
+		t.Fatalf("expected PHP version source, got %#v", commandError.Sources)
+	}
+}
+
+func TestDiscoverRejectsInvalidUTF8PHPVersionFile(t *testing.T) {
+	projectRoot := t.TempDir()
+	writeFile(t, filepath.Join(projectRoot, "composer.json"), "{}\n")
+	if err := os.WriteFile(
+		filepath.Join(projectRoot, ".php-version"),
+		[]byte{0xff, '\n'},
+		0o644,
+	); err != nil {
+		t.Fatalf("write invalid PHP version file: %v", err)
+	}
+
+	_, err := discovery.Discover(context.Background(), discovery.Request{
+		StartPath: projectRoot,
+	})
+
+	var commandError *model.Error
+	if !errors.As(err, &commandError) {
+		t.Fatalf("expected typed discovery error, got %v", err)
+	}
+	if len(commandError.Sources) != 1 ||
+		commandError.Sources[0].Kind != "php_version" {
+		t.Fatalf("expected PHP version source, got %#v", commandError.Sources)
+	}
+}
+
+func hasInputFingerprint(
+	fingerprints []model.InputFingerprint,
+	path string,
+	kind string,
+) bool {
+	for _, fingerprint := range fingerprints {
+		if fingerprint.Path == path && fingerprint.Kind == kind {
+			return true
+		}
+	}
+
+	return false
+}
+
 func writeFile(t *testing.T, path string, content string) {
 	t.Helper()
 

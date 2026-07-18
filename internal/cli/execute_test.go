@@ -144,6 +144,57 @@ func TestJSONHelpContainsOnlyProtocolEvents(t *testing.T) {
 	}
 }
 
+func TestJSONDoctorCommandNameSkipsConfigFlagValue(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	projectRoot := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(projectRoot, "composer.json"),
+		[]byte("{}\n"),
+		0o644,
+	); err != nil {
+		t.Fatalf("write Composer fixture: %v", err)
+	}
+	configPath := filepath.Join(projectRoot, "custom.toml")
+	if err := os.WriteFile(
+		configPath,
+		[]byte("schema_version = 1\n"),
+		0o644,
+	); err != nil {
+		t.Fatalf("write config fixture: %v", err)
+	}
+
+	exitCode := cli.Execute(
+		context.Background(),
+		cli.Dependencies{Application: app.New(app.Dependencies{})},
+		cli.Execution{
+			Arguments: []string{
+				"--json",
+				"--project",
+				projectRoot,
+				"--config",
+				configPath,
+				"doctor",
+			},
+			Input:  strings.NewReader(""),
+			Output: &stdout,
+			Error:  &stderr,
+		},
+	)
+	if exitCode != 0 {
+		t.Fatalf("expected exit zero, got %d\n%s", exitCode, stdout.String())
+	}
+
+	var event model.Event
+	firstLine, _, _ := strings.Cut(stdout.String(), "\n")
+	if err := json.Unmarshal([]byte(firstLine), &event); err != nil {
+		t.Fatalf("decode started event: %v", err)
+	}
+	if event.Command != "doctor" {
+		t.Fatalf("expected doctor command name, got %q", event.Command)
+	}
+}
+
 func readEventGolden(t *testing.T, name string) string {
 	t.Helper()
 

@@ -216,6 +216,69 @@ func TestCompiledBinaryJSONDoctorDiscoversProjectFromDescendant(t *testing.T) {
 	}
 }
 
+func TestCompiledBinaryJSONDoctorCoversEveryFrameworkFixture(t *testing.T) {
+	binary := buildBinary(t)
+	fixtureRoot := filepath.Join("..", "..", "testdata", "fixtures", "frameworks")
+	tests := []struct {
+		name     string
+		expected []model.FrameworkKind
+		conflict bool
+	}{
+		{
+			name:     "laravel-application",
+			expected: []model.FrameworkKind{model.FrameworkLaravelApplication},
+		},
+		{
+			name:     "laravel-package",
+			expected: []model.FrameworkKind{model.FrameworkLaravelPackage},
+		},
+		{
+			name:     "generic-composer",
+			expected: []model.FrameworkKind{model.FrameworkGenericComposer},
+		},
+		{
+			name:     "bedrock-wordpress",
+			expected: []model.FrameworkKind{model.FrameworkBedrockWordPress},
+		},
+		{
+			name:     "symfony",
+			expected: []model.FrameworkKind{model.FrameworkSymfonyApplication},
+		},
+		{
+			name: "conflicting",
+			expected: []model.FrameworkKind{
+				model.FrameworkLaravelApplication,
+				model.FrameworkSymfonyApplication,
+			},
+			conflict: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			projectPath, err := filepath.Abs(filepath.Join(fixtureRoot, test.name))
+			if err != nil {
+				t.Fatalf("resolve fixture path: %v", err)
+			}
+			facts := decodeDoctorFacts(t, runCompiledDoctor(t, binary, projectPath))
+
+			for _, expected := range test.expected {
+				if !containsFramework(facts.Frameworks, expected) {
+					t.Fatalf(
+						"expected framework %q, got %#v",
+						expected,
+						facts.Frameworks,
+					)
+				}
+			}
+			if test.conflict &&
+				!containsDiagnostic(facts.Diagnostics, "ELEFANTE_FRAMEWORK_CONFLICT") {
+				t.Fatalf("expected framework conflict, got %#v", facts.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestCompiledBinaryJSONDoctorEmitsComposerLockFacts(t *testing.T) {
 	binary := buildBinary(t)
 	projectRoot := t.TempDir()
@@ -478,6 +541,32 @@ func decodeDoctorFacts(t *testing.T, content string) model.ProjectFacts {
 	}
 
 	return facts
+}
+
+func containsFramework(
+	frameworks []model.FrameworkFact,
+	expected model.FrameworkKind,
+) bool {
+	for _, framework := range frameworks {
+		if framework.Kind == expected {
+			return true
+		}
+	}
+
+	return false
+}
+
+func containsDiagnostic(
+	diagnostics []model.Diagnostic,
+	expected string,
+) bool {
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == expected {
+			return true
+		}
+	}
+
+	return false
 }
 
 func decodeCompiledEvents(t *testing.T, content string) []compiledEvent {

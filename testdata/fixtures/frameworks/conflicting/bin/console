@@ -1,0 +1,4 @@
+#!/usr/bin/env php
+<?php
+
+throw new RuntimeException('Framework discovery must not execute Symfony Console.');

@@ -114,11 +114,12 @@ func selectedCommand(arguments []string) string {
 		if argument == "--" {
 			break
 		}
-		if argument == "--project" {
+		if argument == "--project" || argument == "--config" {
 			index++
 			continue
 		}
-		if strings.HasPrefix(argument, "--project=") {
+		if strings.HasPrefix(argument, "--project=") ||
+			strings.HasPrefix(argument, "--config=") {
 			continue
 		}
 		if strings.HasPrefix(argument, "-") {

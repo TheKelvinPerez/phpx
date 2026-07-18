@@ -8,9 +8,9 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 5, Composer Platform Constraint Engine, complete
+Current phase: Phase 6, Framework Detection And Configuration, complete
 
-Next phase: Phase 6, Framework Detection And Configuration
+Next phase: Phase 7, Resolver, Plan Model, And Digest
 
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
@@ -192,10 +192,10 @@ Dependencies: Phase 5 completed
 
 Completion Criteria:
 
-* [ ] Framework detection never executes PHP.
-* [ ] Generic Composer remains the fallback adapter.
-* [ ] Configuration precedence is deterministic.
-* [ ] Task commands remain argument arrays without shell interpretation.
+* [x] Framework detection never executes PHP.
+* [x] Generic Composer remains the fallback adapter.
+* [x] Configuration precedence is deterministic.
+* [x] Task commands remain argument arrays without shell interpretation.
 
 ## Phase 7: Resolver, Plan Model, And Digest
 

@@ -4,24 +4,30 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/elefantephp/elefante/internal/model"
 	"github.com/elefantephp/elefante/internal/output"
+	"github.com/elefantephp/elefante/internal/security"
 )
 
 type Execution struct {
-	Arguments []string
-	Input     io.Reader
-	Output    io.Writer
-	Error     io.Writer
+	Arguments       []string
+	Environment     []string
+	Input           io.Reader
+	InputIsTerminal bool
+	Output          io.Writer
+	Error           io.Writer
 }
 
 func Execute(ctx context.Context, dependencies Dependencies, execution Execution) int {
 	commandName := selectedCommand(execution.Arguments)
 	renderer := newRenderer(execution, commandName)
 	dependencies.Renderer = renderer
+	dependencies.AllowPrompts = !requestsJSON(execution.Arguments) &&
+		(execution.InputIsTerminal || terminalInput(execution.Input))
 
 	if err := renderer.Started(); err != nil {
 		return model.ExitCode(model.WrapError(
@@ -79,12 +85,34 @@ func Execute(ctx context.Context, dependencies Dependencies, execution Execution
 	return 0
 }
 
-func newRenderer(execution Execution, commandName string) output.Renderer {
-	if requestsJSON(execution.Arguments) {
-		return output.NewMachineRenderer(execution.Output, commandName)
+func terminalInput(input io.Reader) bool {
+	file, ok := input.(*os.File)
+	if !ok || file.Name() == os.DevNull {
+		return false
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return false
 	}
 
-	return output.NewHumanRenderer(execution.Output, execution.Error)
+	return info.Mode()&os.ModeCharDevice != 0
+}
+
+func newRenderer(execution Execution, commandName string) output.Renderer {
+	redactor := security.NewEnvironmentRedactor(execution.Environment)
+	if requestsJSON(execution.Arguments) {
+		return output.NewMachineRendererWithRedactor(
+			execution.Output,
+			commandName,
+			redactor,
+		)
+	}
+
+	return output.NewHumanRendererWithRedactor(
+		execution.Output,
+		execution.Error,
+		redactor,
+	)
 }
 
 func requestsJSON(arguments []string) bool {
@@ -116,13 +144,15 @@ func selectedCommand(arguments []string) string {
 		}
 		if argument == "--project" ||
 			argument == "--config" ||
-			argument == "--provider" {
+			argument == "--provider" ||
+			argument == "--approve-plan" {
 			index++
 			continue
 		}
 		if strings.HasPrefix(argument, "--project=") ||
 			strings.HasPrefix(argument, "--config=") ||
-			strings.HasPrefix(argument, "--provider=") {
+			strings.HasPrefix(argument, "--provider=") ||
+			strings.HasPrefix(argument, "--approve-plan=") {
 			continue
 		}
 		if strings.HasPrefix(argument, "-") {

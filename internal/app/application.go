@@ -9,20 +9,24 @@ import (
 	"github.com/elefantephp/elefante/internal/model"
 	"github.com/elefantephp/elefante/internal/plan"
 	"github.com/elefantephp/elefante/internal/providers"
+	"github.com/elefantephp/elefante/internal/security"
 )
 
 type DiscoverProject func(context.Context, discovery.Request) (model.ProjectFacts, error)
+type ExecuteApprovedPlan func(context.Context, Analysis) error
 
 type Dependencies struct {
-	Build           model.BuildInfo
-	DiscoverProject DiscoverProject
-	Providers       []providers.Provider
+	Build               model.BuildInfo
+	DiscoverProject     DiscoverProject
+	Providers           []providers.Provider
+	ExecuteApprovedPlan ExecuteApprovedPlan
 }
 
 type Application struct {
-	build           model.BuildInfo
-	discoverProject DiscoverProject
-	providers       []providers.Provider
+	build               model.BuildInfo
+	discoverProject     DiscoverProject
+	providers           []providers.Provider
+	executeApprovedPlan ExecuteApprovedPlan
 }
 
 type DoctorRequest struct {
@@ -39,6 +43,18 @@ type PlanRequest struct {
 	Frozen      bool
 }
 
+type SyncRequest struct {
+	ProjectPath    string
+	ConfigPath     string
+	Provider       string
+	Offline        bool
+	Frozen         bool
+	NonInteractive bool
+	Yes            bool
+	ApprovedPlan   string
+	Confirmed      bool
+}
+
 type Analysis struct {
 	Facts        model.ProjectFacts          `json:"facts"`
 	Observations []model.ProviderObservation `json:"observations"`
@@ -51,10 +67,23 @@ func New(dependencies Dependencies) *Application {
 		discoverProject = discovery.Discover
 	}
 
+	executeApprovedPlan := dependencies.ExecuteApprovedPlan
+	if executeApprovedPlan == nil {
+		executeApprovedPlan = func(context.Context, Analysis) error {
+			return model.NewError(
+				model.ErrorSync,
+				"Synchronization execution is not available in this build phase.",
+			).WithHint(
+				"Use elefante plan to review the synchronization work.",
+			)
+		}
+	}
+
 	return &Application{
-		build:           dependencies.Build,
-		discoverProject: discoverProject,
-		providers:       append([]providers.Provider(nil), dependencies.Providers...),
+		build:               dependencies.Build,
+		discoverProject:     discoverProject,
+		providers:           append([]providers.Provider(nil), dependencies.Providers...),
+		executeApprovedPlan: executeApprovedPlan,
 	}
 }
 
@@ -92,6 +121,43 @@ func (application *Application) Plan(
 			Frozen:  request.Frozen,
 		},
 	})
+}
+
+func (application *Application) Sync(
+	ctx context.Context,
+	request SyncRequest,
+) (Analysis, error) {
+	analysis, err := application.analyze(ctx, analysisRequest{
+		ProjectPath: request.ProjectPath,
+		ConfigPath:  request.ConfigPath,
+		Provider:    request.Provider,
+		Operation:   model.OperationSync,
+		Policy: model.PlanPolicy{
+			Offline: request.Offline,
+			Frozen:  request.Frozen,
+		},
+	})
+	if err != nil {
+		return Analysis{}, err
+	}
+	if err := BlockingPlanError(analysis.Plan); err != nil {
+		return analysis, err
+	}
+	if err := security.AuthorizePlan(
+		analysis.Plan,
+		security.ApprovalOptions{
+			Yes:          request.Yes,
+			ApprovedPlan: request.ApprovedPlan,
+			Confirmed:    request.Confirmed,
+		},
+	); err != nil {
+		return analysis, err
+	}
+	if err := application.executeApprovedPlan(ctx, analysis); err != nil {
+		return analysis, err
+	}
+
+	return analysis, nil
 }
 
 type analysisRequest struct {
@@ -185,4 +251,35 @@ func (application *Application) analyze(
 		Observations: observations,
 		Plan:         builtPlan,
 	}, nil
+}
+
+func BlockingPlanError(builtPlan model.Plan) error {
+	for _, diagnostic := range builtPlan.Diagnostics {
+		if diagnostic.Severity != model.SeverityError {
+			continue
+		}
+		code := model.ErrorRequirements
+		if strings.HasPrefix(diagnostic.Code, "ELEFANTE_OFFLINE") ||
+			strings.HasPrefix(diagnostic.Code, "ELEFANTE_NETWORK") {
+			code = model.ErrorNetwork
+		} else if strings.HasPrefix(diagnostic.Code, "ELEFANTE_PROVIDER") ||
+			strings.HasPrefix(diagnostic.Code, "ELEFANTE_NATIVE") {
+			code = model.ErrorProvider
+		}
+		commandError := model.NewError(
+			code,
+			"Project analysis found a blocking diagnostic.",
+		)
+		commandError.Detail = diagnostic.Message
+		commandError.Hint = diagnostic.Hint
+		commandError.Sources = append(
+			[]model.SourceReference(nil),
+			diagnostic.Sources...,
+		)
+		commandError.Provider = diagnostic.Provider
+
+		return commandError
+	}
+
+	return nil
 }

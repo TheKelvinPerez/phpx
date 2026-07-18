@@ -1,25 +1,39 @@
 package output
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"sync"
 
 	"github.com/elefantephp/elefante/internal/model"
+	"github.com/elefantephp/elefante/internal/security"
 )
 
 type MachineRenderer struct {
 	mu       sync.Mutex
 	writer   io.Writer
 	command  string
+	redactor security.Redactor
 	sequence uint64
 }
 
 func NewMachineRenderer(writer io.Writer, command string) *MachineRenderer {
+	return NewMachineRendererWithRedactor(
+		writer,
+		command,
+		security.NewRedactor(),
+	)
+}
+
+func NewMachineRendererWithRedactor(
+	writer io.Writer,
+	command string,
+	redactor security.Redactor,
+) *MachineRenderer {
 	return &MachineRenderer{
-		writer:  writer,
-		command: command,
+		writer:   writer,
+		command:  command,
+		redactor: redactor,
 	}
 }
 
@@ -37,6 +51,12 @@ func (renderer *MachineRenderer) Diagnostic(diagnostic Diagnostic) error {
 
 func (renderer *MachineRenderer) Plan(plan Plan) error {
 	return renderer.emit(model.EventPlan, plan.Payload)
+}
+
+func (renderer *MachineRenderer) ApprovalRequired(
+	approval ApprovalRequired,
+) error {
+	return renderer.emit(model.EventApprovalRequired, approval.Payload)
 }
 
 func (renderer *MachineRenderer) Result(result Result) error {
@@ -66,7 +86,7 @@ func (renderer *MachineRenderer) emit(eventType model.EventType, payload any) er
 		Payload:  payload,
 	}
 
-	encoded, err := json.Marshal(event)
+	encoded, err := renderer.redactor.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("encode %s event: %w", eventType, err)
 	}

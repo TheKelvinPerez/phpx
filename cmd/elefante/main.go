@@ -32,10 +32,11 @@ func main() {
 	exitCode := cli.Execute(ctx, cli.Dependencies{
 		Application: application,
 	}, cli.Execution{
-		Arguments: os.Args[1:],
-		Input:     os.Stdin,
-		Output:    os.Stdout,
-		Error:     os.Stderr,
+		Arguments:   os.Args[1:],
+		Environment: os.Environ(),
+		Input:       os.Stdin,
+		Output:      os.Stdout,
+		Error:       os.Stderr,
 	})
 	if exitCode != 0 {
 		os.Exit(exitCode)

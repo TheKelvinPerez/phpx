@@ -77,6 +77,356 @@ func TestJSONUsageErrorOwnsStandardOutputAndExitCode(t *testing.T) {
 	}
 }
 
+func TestExecuteRedactsSecretsDerivedFromEnvironment(t *testing.T) {
+	t.Parallel()
+
+	const secret = "unknown-secret-command"
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := cli.Execute(
+		context.Background(),
+		cli.Dependencies{
+			Application: app.New(app.Dependencies{}),
+		},
+		cli.Execution{
+			Arguments:   []string{"--json", secret},
+			Environment: []string{"API_TOKEN=" + secret},
+			Input:       strings.NewReader(""),
+			Output:      &stdout,
+			Error:       &stderr,
+		},
+	)
+
+	if exitCode != 2 {
+		t.Fatalf("expected usage exit 2, got %d", exitCode)
+	}
+	if strings.Contains(stdout.String(), secret) {
+		t.Fatalf("captured output leaked an environment secret: %s", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "[REDACTED]") {
+		t.Fatalf("expected redaction marker, got %s", stdout.String())
+	}
+}
+
+func TestNonterminalSyncNeverPromptsBeforeApprovalFailure(t *testing.T) {
+	t.Parallel()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	var mutationCalls int
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return cliCompatibleFacts(), nil
+		},
+		Providers: providerSet(compatibleCLIProvider()),
+		ExecuteApprovedPlan: func(context.Context, app.Analysis) error {
+			mutationCalls++
+
+			return nil
+		},
+	})
+
+	exitCode := cli.Execute(
+		context.Background(),
+		cli.Dependencies{Application: application},
+		cli.Execution{
+			Arguments: []string{
+				"--project",
+				"/workspace",
+				"--provider",
+				"native",
+				"sync",
+			},
+			Input:  failOnRead{},
+			Output: &stdout,
+			Error:  &stderr,
+		},
+	)
+
+	if exitCode != 6 {
+		t.Fatalf(
+			"expected approval exit 6, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout.String(),
+			stderr.String(),
+		)
+	}
+	if mutationCalls != 0 {
+		t.Fatalf("approval failure reached mutation boundary %d times", mutationCalls)
+	}
+	if !strings.Contains(stderr.String(), "requires explicit approval") {
+		t.Fatalf("expected approval error, got:\n%s", stderr.String())
+	}
+}
+
+func TestSyncApprovalFlagsReachMutationOnlyForCurrentPlan(t *testing.T) {
+	t.Parallel()
+
+	var mutationCalls int
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return cliCompatibleFacts(), nil
+		},
+		Providers: providerSet(compatibleCLIProvider()),
+		ExecuteApprovedPlan: func(context.Context, app.Analysis) error {
+			mutationCalls++
+
+			return nil
+		},
+	})
+	planned, err := application.Plan(t.Context(), app.PlanRequest{
+		ProjectPath: "/workspace",
+		Provider:    "native",
+	})
+	if err != nil {
+		t.Fatalf("build reviewed plan: %v", err)
+	}
+
+	run := func(arguments ...string) (int, string, string) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		exitCode := cli.Execute(
+			context.Background(),
+			cli.Dependencies{Application: application},
+			cli.Execution{
+				Arguments: arguments,
+				Input:     failOnRead{},
+				Output:    &stdout,
+				Error:     &stderr,
+			},
+		)
+
+		return exitCode, stdout.String(), stderr.String()
+	}
+
+	exitCode, _, stderr := run(
+		"--project", "/workspace",
+		"--provider", "native",
+		"--yes",
+		"sync",
+	)
+	if exitCode != 0 {
+		t.Fatalf("--yes exit %d\nstderr:\n%s", exitCode, stderr)
+	}
+	if mutationCalls != 1 {
+		t.Fatalf("expected --yes mutation call, got %d", mutationCalls)
+	}
+
+	exitCode, stdout, stderr := run(
+		"--json",
+		"--project", "/workspace",
+		"--provider", "native",
+		"--approve-plan", planned.Plan.Digest,
+		"sync",
+	)
+	if exitCode != 0 {
+		t.Fatalf(
+			"exact approval exit %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout,
+			stderr,
+		)
+	}
+	if mutationCalls != 2 {
+		t.Fatalf("expected exact approval mutation call, got %d", mutationCalls)
+	}
+	events := decodeCLIEvents(t, stdout)
+	for _, event := range events {
+		if event.Command != "sync" {
+			t.Fatalf("expected sync event command, got %#v", event)
+		}
+	}
+
+	exitCode, _, _ = run(
+		"--project", "/workspace",
+		"--provider", "native",
+		"--approve-plan", "sha256:stale",
+		"sync",
+	)
+	if exitCode != 7 {
+		t.Fatalf("expected mismatch exit 7, got %d", exitCode)
+	}
+	if mutationCalls != 2 {
+		t.Fatalf("plan mismatch reached mutation boundary, got %d calls", mutationCalls)
+	}
+
+	exitCode, _, _ = run(
+		"--project", "/workspace",
+		"--provider", "native",
+		"--yes",
+		"--approve-plan", planned.Plan.Digest,
+		"sync",
+	)
+	if exitCode != 2 {
+		t.Fatalf("expected mutually exclusive flag exit 2, got %d", exitCode)
+	}
+	if mutationCalls != 2 {
+		t.Fatalf("usage error reached mutation boundary, got %d calls", mutationCalls)
+	}
+}
+
+func TestTerminalSyncConfirmationRevalidatesDisplayedPlan(t *testing.T) {
+	t.Parallel()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	var mutationCalls int
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return cliCompatibleFacts(), nil
+		},
+		Providers: providerSet(compatibleCLIProvider()),
+		ExecuteApprovedPlan: func(context.Context, app.Analysis) error {
+			mutationCalls++
+
+			return nil
+		},
+	})
+
+	exitCode := cli.Execute(
+		context.Background(),
+		cli.Dependencies{Application: application},
+		cli.Execution{
+			Arguments: []string{
+				"--project", "/workspace",
+				"--provider", "native",
+				"sync",
+			},
+			Input:           strings.NewReader("yes\n"),
+			InputIsTerminal: true,
+			Output:          &stdout,
+			Error:           &stderr,
+		},
+	)
+
+	if exitCode != 0 {
+		t.Fatalf(
+			"expected confirmed sync exit zero, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout.String(),
+			stderr.String(),
+		)
+	}
+	if mutationCalls != 1 {
+		t.Fatalf("expected one mutation call, got %d", mutationCalls)
+	}
+	if !strings.Contains(stderr.String(), "Apply this exact plan? [y/N]:") {
+		t.Fatalf("expected terminal approval prompt, got:\n%s", stderr.String())
+	}
+}
+
+func TestNonInteractiveFlagDisablesTerminalPrompt(t *testing.T) {
+	t.Parallel()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return cliCompatibleFacts(), nil
+		},
+		Providers: providerSet(compatibleCLIProvider()),
+		ExecuteApprovedPlan: func(context.Context, app.Analysis) error {
+			t.Fatal("noninteractive approval failure reached mutation")
+
+			return nil
+		},
+	})
+
+	exitCode := cli.Execute(
+		context.Background(),
+		cli.Dependencies{Application: application},
+		cli.Execution{
+			Arguments: []string{
+				"--project", "/workspace",
+				"--provider", "native",
+				"--non-interactive",
+				"sync",
+			},
+			Input:           failOnRead{},
+			InputIsTerminal: true,
+			Output:          &stdout,
+			Error:           &stderr,
+		},
+	)
+
+	if exitCode != 6 {
+		t.Fatalf(
+			"expected approval exit 6, got %d\nstdout:\n%s\nstderr:\n%s",
+			exitCode,
+			stdout.String(),
+			stderr.String(),
+		)
+	}
+}
+
+type cliEvent struct {
+	Command string          `json:"command"`
+	Type    model.EventType `json:"type"`
+}
+
+func decodeCLIEvents(t *testing.T, content string) []cliEvent {
+	t.Helper()
+
+	var events []cliEvent
+	for _, line := range strings.Split(strings.TrimSpace(content), "\n") {
+		var event cliEvent
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Fatalf("decode CLI event: %v\nline: %s", err, line)
+		}
+		events = append(events, event)
+	}
+
+	return events
+}
+
+type failOnRead struct{}
+
+func (failOnRead) Read([]byte) (int, error) {
+	panic("nonterminal input must never be read for approval")
+}
+
+func compatibleCLIProvider() *testProvider {
+	return &testProvider{
+		observation: model.ProviderObservation{
+			Provider:  "native",
+			Available: true,
+			Runtimes: []model.RuntimeObservation{
+				{
+					Name:    "php",
+					Version: "8.5.0",
+					SAPI:    "cli",
+					Source: model.SourceReference{
+						Path: "/fixture/bin/php",
+						Kind: "provider_executable",
+					},
+				},
+			},
+			Composer: []model.ComposerObservation{
+				{
+					Version:  "2.9.5",
+					Source:   "system",
+					Path:     "/fixture/bin/composer",
+					Identity: "sha256:composer",
+				},
+			},
+			Fingerprint: "sha256:native",
+		},
+	}
+}
+
 func TestJSONFlagAfterCommandSeparatorDoesNotChangeElefanteOutputMode(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

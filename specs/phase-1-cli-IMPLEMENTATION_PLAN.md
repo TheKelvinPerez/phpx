@@ -8,9 +8,9 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 9, DDEV Provider Doctor And Plan, complete
+Current phase: Phase 10, Trust, Network, State, And Locks, complete
 
-Next phase: Phase 10, Trust, Network, State, And Locks
+Next phase: Phase 11, Official Composer Acquisition And Sync Engine
 
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
@@ -304,10 +304,10 @@ Dependencies: Phase 9 completed
 
 Completion Criteria:
 
-* [ ] Raw synthetic secrets appear nowhere in captured output or state.
-* [ ] Nonterminal execution never prompts.
-* [ ] Plan mismatch exits before mutation.
-* [ ] Interrupted state writes preserve the previous valid state.
+* [x] Raw synthetic secrets appear nowhere in captured output or state.
+* [x] Nonterminal execution never prompts.
+* [x] Plan mismatch exits before mutation.
+* [x] Interrupted state writes preserve the previous valid state.
 
 ## Phase 11: Official Composer Acquisition And Sync Engine
 

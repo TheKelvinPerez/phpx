@@ -360,6 +360,138 @@ func TestCompiledBinaryNativeDoctorAndPlanInspectLocalExecutables(t *testing.T) 
 	}
 }
 
+func TestCompiledSyncPreflightFailuresDoNotMutate(t *testing.T) {
+	if _, err := exec.LookPath("php"); err != nil {
+		t.Skip("local PHP executable is unavailable")
+	}
+	if _, err := exec.LookPath("composer"); err != nil {
+		t.Skip("local Composer executable is unavailable")
+	}
+
+	binary := buildBinary(t)
+	nativePath := compiledNativeToolPath(t)
+
+	t.Run("approval required", func(t *testing.T) {
+		projectRoot := compiledSyncProject(t)
+		home := t.TempDir()
+		before := readProjectComposer(t, projectRoot)
+
+		exitCode, stdout, stderr := runCompiledWithHome(
+			t,
+			binary,
+			home,
+			nativePath,
+			"--json",
+			"--project", projectRoot,
+			"--provider", "native",
+			"sync",
+		)
+		if exitCode != 6 {
+			t.Fatalf(
+				"expected approval exit 6, got %d\nstdout:\n%s\nstderr:\n%s",
+				exitCode,
+				stdout,
+				stderr,
+			)
+		}
+		assertCompiledErrorCode(t, stdout, model.ErrorApprovalRequired)
+		assertCompiledApprovalEvent(t, stdout)
+		assertCompiledPreflightUnchanged(t, projectRoot, home, before)
+	})
+
+	t.Run("plan mismatch", func(t *testing.T) {
+		projectRoot := compiledSyncProject(t)
+		home := t.TempDir()
+		exitCode, planOutput, stderr := runCompiledWithHome(
+			t,
+			binary,
+			home,
+			nativePath,
+			"--json",
+			"--project", projectRoot,
+			"--provider", "native",
+			"plan",
+		)
+		if exitCode != 0 {
+			t.Fatalf(
+				"build reviewed plan: exit %d\nstdout:\n%s\nstderr:\n%s",
+				exitCode,
+				planOutput,
+				stderr,
+			)
+		}
+		reviewed := planFromEvents(t, decodeCompiledEvents(t, planOutput))
+		changed := `{
+    "name": "acme/sync-preflight",
+    "description": "changed after review",
+    "require": {
+        "php": ">=8.0",
+        "ext-json": "*"
+    }
+}
+`
+		if err := os.WriteFile(
+			filepath.Join(projectRoot, "composer.json"),
+			[]byte(changed),
+			0o644,
+		); err != nil {
+			t.Fatalf("change Composer fixture: %v", err)
+		}
+		before := readProjectComposer(t, projectRoot)
+
+		exitCode, stdout, stderr := runCompiledWithHome(
+			t,
+			binary,
+			home,
+			nativePath,
+			"--json",
+			"--project", projectRoot,
+			"--provider", "native",
+			"--approve-plan", reviewed.Digest,
+			"sync",
+		)
+		if exitCode != 7 {
+			t.Fatalf(
+				"expected mismatch exit 7, got %d\nstdout:\n%s\nstderr:\n%s",
+				exitCode,
+				stdout,
+				stderr,
+			)
+		}
+		assertCompiledErrorCode(t, stdout, model.ErrorPlanMismatch)
+		assertCompiledPreflightUnchanged(t, projectRoot, home, before)
+	})
+
+	t.Run("offline cache miss", func(t *testing.T) {
+		projectRoot := compiledSyncProject(t)
+		home := t.TempDir()
+		before := readProjectComposer(t, projectRoot)
+
+		exitCode, stdout, stderr := runCompiledWithHome(
+			t,
+			binary,
+			home,
+			nativePath,
+			"--json",
+			"--project", projectRoot,
+			"--provider", "native",
+			"--offline",
+			"--yes",
+			"sync",
+		)
+		if exitCode != 8 {
+			t.Fatalf(
+				"expected network exit 8, got %d\nstdout:\n%s\nstderr:\n%s",
+				exitCode,
+				stdout,
+				stderr,
+			)
+		}
+		assertCompiledErrorCode(t, stdout, model.ErrorNetwork)
+		assertCompiledPreflightUnchanged(t, projectRoot, home, before)
+	})
+}
+
 func TestCompiledBinaryRegistersDDEVProvider(t *testing.T) {
 	binary := buildBinary(t)
 	binDirectory := t.TempDir()
@@ -961,6 +1093,176 @@ func buildBinary(t *testing.T) string {
 	}
 
 	return binary
+}
+
+func compiledSyncProject(t *testing.T) string {
+	t.Helper()
+
+	projectRoot := t.TempDir()
+	content := `{
+    "name": "acme/sync-preflight",
+    "require": {
+        "php": ">=8.0",
+        "ext-json": "*"
+    }
+}
+`
+	if err := os.WriteFile(
+		filepath.Join(projectRoot, "composer.json"),
+		[]byte(content),
+		0o644,
+	); err != nil {
+		t.Fatalf("write synchronization fixture: %v", err)
+	}
+
+	return projectRoot
+}
+
+func runCompiledWithHome(
+	t *testing.T,
+	binary string,
+	home string,
+	nativePath string,
+	arguments ...string,
+) (int, string, string) {
+	t.Helper()
+
+	command := exec.Command(binary, arguments...)
+	command.Env = environmentWithOverrides(os.Environ(), map[string]string{
+		"HOME":            home,
+		"XDG_CONFIG_HOME": filepath.Join(home, "xdg-config"),
+		"XDG_CACHE_HOME":  filepath.Join(home, "xdg-cache"),
+		"XDG_STATE_HOME":  filepath.Join(home, "xdg-state"),
+		"PATH":            nativePath,
+	})
+	command.Stdin = strings.NewReader("")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+
+	err := command.Run()
+	if err == nil {
+		return 0, stdout.String(), stderr.String()
+	}
+	var exitError *exec.ExitError
+	if !errors.As(err, &exitError) {
+		t.Fatalf("run compiled command: %v", err)
+	}
+
+	return exitError.ExitCode(), stdout.String(), stderr.String()
+}
+
+func compiledNativeToolPath(t *testing.T) string {
+	t.Helper()
+
+	directory := t.TempDir()
+	for _, executable := range []string{"php", "composer"} {
+		source, err := exec.LookPath(executable)
+		if err != nil {
+			t.Fatalf("resolve %s executable: %v", executable, err)
+		}
+		if err := os.Symlink(source, filepath.Join(directory, executable)); err != nil {
+			t.Fatalf("link %s executable: %v", executable, err)
+		}
+	}
+
+	return directory
+}
+
+func environmentWithOverrides(
+	environment []string,
+	overrides map[string]string,
+) []string {
+	result := make([]string, 0, len(environment)+len(overrides))
+	for _, variable := range environment {
+		name, _, _ := strings.Cut(variable, "=")
+		if _, replaced := overrides[name]; replaced {
+			continue
+		}
+		result = append(result, variable)
+	}
+	for name, value := range overrides {
+		result = append(result, name+"="+value)
+	}
+
+	return result
+}
+
+func readProjectComposer(t *testing.T, projectRoot string) []byte {
+	t.Helper()
+
+	content, err := os.ReadFile(filepath.Join(projectRoot, "composer.json"))
+	if err != nil {
+		t.Fatalf("read project Composer file: %v", err)
+	}
+
+	return content
+}
+
+func assertCompiledPreflightUnchanged(
+	t *testing.T,
+	projectRoot string,
+	home string,
+	before []byte,
+) {
+	t.Helper()
+
+	after := readProjectComposer(t, projectRoot)
+	if !bytes.Equal(before, after) {
+		t.Fatalf("preflight failure changed composer.json")
+	}
+	entries, err := os.ReadDir(projectRoot)
+	if err != nil {
+		t.Fatalf("inspect project after preflight: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "composer.json" {
+		t.Fatalf("preflight failure changed project contents: %#v", entries)
+	}
+	for _, stateRoot := range []string{
+		filepath.Join(home, "Library", "Application Support", "Elefante"),
+		filepath.Join(home, "xdg-config", "elefante"),
+		filepath.Join(home, ".elefante"),
+	} {
+		if _, err := os.Stat(stateRoot); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("preflight failure created Elefante state at %s", stateRoot)
+		}
+	}
+}
+
+func assertCompiledErrorCode(
+	t *testing.T,
+	content string,
+	expected model.ErrorCode,
+) {
+	t.Helper()
+
+	for _, event := range decodeCompiledEvents(t, content) {
+		if event.Type != model.EventError {
+			continue
+		}
+		var commandError model.Error
+		if err := json.Unmarshal(event.Payload, &commandError); err != nil {
+			t.Fatalf("decode compiled command error: %v", err)
+		}
+		if commandError.Code != expected {
+			t.Fatalf("expected %s, got %#v", expected, commandError)
+		}
+
+		return
+	}
+	t.Fatalf("expected compiled error %s", expected)
+}
+
+func assertCompiledApprovalEvent(t *testing.T, content string) {
+	t.Helper()
+
+	for _, event := range decodeCompiledEvents(t, content) {
+		if event.Type == model.EventApprovalRequired {
+			return
+		}
+	}
+	t.Fatal("expected compiled approval_required event")
 }
 
 func readEventGolden(t *testing.T, name string) string {

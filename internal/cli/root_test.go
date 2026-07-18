@@ -156,9 +156,9 @@ func TestPlanRendersNativeDecisionAndForwardsReadOnlyPolicy(t *testing.T) {
 	)
 	var commandError *model.Error
 	if !errors.As(err, &commandError) ||
-		commandError.Code != model.ErrorRequirements {
+		commandError.Code != model.ErrorNetwork {
 		t.Fatalf(
-			"expected offline requirements blocker, got %v\nstdout:\n%s\nstderr:\n%s",
+			"expected offline network blocker, got %v\nstdout:\n%s\nstderr:\n%s",
 			err,
 			stdout,
 			stderr,

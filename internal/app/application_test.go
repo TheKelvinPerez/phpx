@@ -306,6 +306,95 @@ func TestPlanDoesNotRequestActionsFromUnselectedProviders(t *testing.T) {
 	}
 }
 
+func TestSyncAuthorizesBeforeCallingMutationBoundary(t *testing.T) {
+	t.Parallel()
+
+	var mutationCalls int
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return compatibleFacts(), nil
+		},
+		Providers: []providers.Provider{
+			&fakeProvider{
+				name:        "native",
+				observation: compatibleProviderObservation("native"),
+			},
+		},
+		ExecuteApprovedPlan: func(
+			context.Context,
+			app.Analysis,
+		) error {
+			mutationCalls++
+
+			return nil
+		},
+	})
+
+	analysis, err := application.Sync(t.Context(), app.SyncRequest{
+		ProjectPath:    "/workspace",
+		Provider:       "native",
+		NonInteractive: true,
+	})
+	assertApplicationErrorCode(t, err, model.ErrorApprovalRequired)
+	if mutationCalls != 0 {
+		t.Fatalf("approval failure reached mutation boundary %d times", mutationCalls)
+	}
+
+	_, err = application.Sync(t.Context(), app.SyncRequest{
+		ProjectPath:    "/workspace",
+		Provider:       "native",
+		ApprovedPlan:   "sha256:reviewed",
+		NonInteractive: true,
+	})
+	assertApplicationErrorCode(t, err, model.ErrorPlanMismatch)
+	if mutationCalls != 0 {
+		t.Fatalf("plan mismatch reached mutation boundary %d times", mutationCalls)
+	}
+
+	_, err = application.Sync(t.Context(), app.SyncRequest{
+		ProjectPath:    "/workspace",
+		Provider:       "native",
+		Yes:            true,
+		NonInteractive: true,
+	})
+	if err != nil {
+		t.Fatalf("authorize freshly computed plan: %v", err)
+	}
+	if mutationCalls != 1 {
+		t.Fatalf("expected --yes to reach mutation boundary once, got %d", mutationCalls)
+	}
+
+	_, err = application.Sync(t.Context(), app.SyncRequest{
+		ProjectPath:    "/workspace",
+		Provider:       "native",
+		ApprovedPlan:   analysis.Plan.Digest,
+		NonInteractive: true,
+	})
+	if err != nil {
+		t.Fatalf("authorize exact reviewed plan: %v", err)
+	}
+	if mutationCalls != 2 {
+		t.Fatalf("expected exact digest to reach mutation boundary, got %d", mutationCalls)
+	}
+}
+
+func assertApplicationErrorCode(
+	t *testing.T,
+	err error,
+	expected model.ErrorCode,
+) {
+	t.Helper()
+
+	var commandError *model.Error
+	if !errors.As(err, &commandError) ||
+		commandError.Code != expected {
+		t.Fatalf("expected %s, got %v", expected, err)
+	}
+}
+
 func compatibleProviderObservation(name string) model.ProviderObservation {
 	return model.ProviderObservation{
 		Provider:  name,

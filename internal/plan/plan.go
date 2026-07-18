@@ -1345,7 +1345,7 @@ func composerTrustRequirements(
 		Scripts          []scriptIdentity         `json:"scripts"`
 	}{
 		Schema: "elefante.composer-trust/v1",
-		Inputs: cloneFingerprints(
+		Inputs: composerTrustFingerprints(
 			inputs,
 		),
 	}
@@ -1423,6 +1423,21 @@ func composerTrustRequirements(
 	}
 
 	return requirements
+}
+
+func composerTrustFingerprints(
+	inputs []model.InputFingerprint,
+) []model.InputFingerprint {
+	relevant := make([]model.InputFingerprint, 0, len(inputs))
+	for _, input := range inputs {
+		switch input.Kind {
+		case "composer_manifest", "composer_lock", "elefante_config":
+			relevant = append(relevant, input)
+		}
+	}
+	sortFingerprints(relevant)
+
+	return relevant
 }
 
 func composerActionTrust(

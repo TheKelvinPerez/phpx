@@ -1,7 +1,11 @@
 package cli
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"io"
+	"sort"
 	"strings"
 
 	"github.com/elefantephp/elefante/internal/app"
@@ -11,8 +15,9 @@ import (
 )
 
 type Dependencies struct {
-	Application *app.Application
-	Renderer    output.Renderer
+	Application  *app.Application
+	Renderer     output.Renderer
+	AllowPrompts bool
 }
 
 func NewRootCommand(dependencies Dependencies) *cobra.Command {
@@ -32,12 +37,197 @@ func NewRootCommand(dependencies Dependencies) *cobra.Command {
 	root.PersistentFlags().String("provider", "", "Select an environment provider")
 	root.PersistentFlags().Bool("offline", false, "Prohibit network access")
 	root.PersistentFlags().Bool("frozen", false, "Prohibit project file changes")
+	root.PersistentFlags().Bool("non-interactive", false, "Prohibit prompts")
+	root.PersistentFlags().Bool("yes", false, "Approve the freshly computed plan")
+	root.PersistentFlags().String(
+		"approve-plan",
+		"",
+		"Approve only an exact reviewed plan digest",
+	)
+	root.MarkFlagsMutuallyExclusive("yes", "approve-plan")
 
 	root.AddCommand(newVersionCommand(dependencies.Application, dependencies.Renderer))
 	root.AddCommand(newDoctorCommand(dependencies.Application, dependencies.Renderer))
 	root.AddCommand(newPlanCommand(dependencies.Application, dependencies.Renderer))
+	root.AddCommand(newSyncCommand(
+		dependencies.Application,
+		dependencies.Renderer,
+		dependencies.AllowPrompts,
+	))
 
 	return root
+}
+
+func newSyncCommand(
+	application *app.Application,
+	renderer output.Renderer,
+	allowPrompts bool,
+) *cobra.Command {
+	return &cobra.Command{
+		Use:   "sync",
+		Short: "Apply an explicitly approved synchronization plan",
+		Args:  cobra.NoArgs,
+		RunE: func(command *cobra.Command, _ []string) error {
+			projectPath, configPath, provider, err := analysisPaths(command)
+			if err != nil {
+				return err
+			}
+			offline, err := command.Flags().GetBool("offline")
+			if err != nil {
+				return model.WrapError(
+					model.ErrorInternal,
+					"Could not read the offline flag.",
+					err,
+				)
+			}
+			frozen, err := command.Flags().GetBool("frozen")
+			if err != nil {
+				return model.WrapError(
+					model.ErrorInternal,
+					"Could not read the frozen flag.",
+					err,
+				)
+			}
+			nonInteractive, err := command.Flags().GetBool("non-interactive")
+			if err != nil {
+				return model.WrapError(
+					model.ErrorInternal,
+					"Could not read the noninteractive flag.",
+					err,
+				)
+			}
+			yes, err := command.Flags().GetBool("yes")
+			if err != nil {
+				return model.WrapError(
+					model.ErrorInternal,
+					"Could not read the approval flag.",
+					err,
+				)
+			}
+			approvedPlan, err := command.Flags().GetString("approve-plan")
+			if err != nil {
+				return model.WrapError(
+					model.ErrorInternal,
+					"Could not read the approved plan digest.",
+					err,
+				)
+			}
+
+			request := app.SyncRequest{
+				ProjectPath:    projectPath,
+				ConfigPath:     configPath,
+				Provider:       provider,
+				Offline:        offline,
+				Frozen:         frozen,
+				NonInteractive: nonInteractive,
+				Yes:            yes,
+				ApprovedPlan:   approvedPlan,
+			}
+			analysis, syncErr := application.Sync(
+				command.Context(),
+				request,
+			)
+			if analysis.Plan.SchemaVersion != "" {
+				if err := renderAnalysis(renderer, analysis); err != nil {
+					return err
+				}
+			}
+			if !isCommandError(syncErr, model.ErrorApprovalRequired) {
+				return syncErr
+			}
+			if err := renderApprovalRequired(renderer, analysis.Plan); err != nil {
+				return err
+			}
+			if !allowPrompts || nonInteractive {
+				return syncErr
+			}
+
+			confirmed, err := promptForApproval(
+				command.InOrStdin(),
+				command.ErrOrStderr(),
+			)
+			if err != nil {
+				return model.WrapError(
+					model.ErrorApprovalRequired,
+					"Could not read synchronization approval.",
+					err,
+				)
+			}
+			if !confirmed {
+				return syncErr
+			}
+
+			request.ApprovedPlan = analysis.Plan.Digest
+			request.Yes = false
+			revalidated, syncErr := application.Sync(command.Context(), request)
+			if revalidated.Plan.Digest != "" &&
+				revalidated.Plan.Digest != analysis.Plan.Digest {
+				if err := renderAnalysis(renderer, revalidated); err != nil {
+					return err
+				}
+			}
+
+			return syncErr
+		},
+	}
+}
+
+func renderApprovalRequired(
+	renderer output.Renderer,
+	builtPlan model.Plan,
+) error {
+	effectSet := make(map[model.EffectClass]struct{})
+	for _, action := range builtPlan.Actions {
+		if action.Effect != model.EffectRead {
+			effectSet[action.Effect] = struct{}{}
+		}
+	}
+	effects := make([]model.EffectClass, 0, len(effectSet))
+	for effect := range effectSet {
+		effects = append(effects, effect)
+	}
+	sort.Slice(effects, func(left int, right int) bool {
+		return effects[left] < effects[right]
+	})
+
+	if err := renderer.ApprovalRequired(output.ApprovalRequired{
+		Payload: model.ApprovalRequiredPayload{
+			PlanDigest: builtPlan.Digest,
+			Effects:    effects,
+			Trust: append(
+				[]model.TrustRequirement(nil),
+				builtPlan.Trust...,
+			),
+		},
+		Text: "Approval required for plan " + builtPlan.Digest + ".",
+	}); err != nil {
+		return model.WrapError(
+			model.ErrorInternal,
+			"Could not write the approval requirement.",
+			err,
+		)
+	}
+
+	return nil
+}
+
+func promptForApproval(input io.Reader, writer io.Writer) (bool, error) {
+	if _, err := fmt.Fprint(writer, "Apply this exact plan? [y/N]: "); err != nil {
+		return false, err
+	}
+	line, err := bufio.NewReader(input).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return false, err
+	}
+	answer := strings.ToLower(strings.TrimSpace(line))
+
+	return answer == "y" || answer == "yes", nil
+}
+
+func isCommandError(err error, code model.ErrorCode) bool {
+	var commandError *model.Error
+
+	return errors.As(err, &commandError) && commandError.Code == code
 }
 
 func newDoctorCommand(application *app.Application, renderer output.Renderer) *cobra.Command {
@@ -84,7 +274,7 @@ func newDoctorCommand(application *app.Application, renderer output.Renderer) *c
 				return err
 			}
 
-			return blockingPlanError(analysis.Plan)
+			return app.BlockingPlanError(analysis.Plan)
 		},
 	}
 }
@@ -133,7 +323,7 @@ func newPlanCommand(
 				return err
 			}
 
-			return blockingPlanError(analysis.Plan)
+			return app.BlockingPlanError(analysis.Plan)
 		},
 	}
 }
@@ -383,34 +573,6 @@ func formatPlan(builtPlan model.Plan) string {
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-func blockingPlanError(builtPlan model.Plan) error {
-	for _, diagnostic := range builtPlan.Diagnostics {
-		if diagnostic.Severity != model.SeverityError {
-			continue
-		}
-		code := model.ErrorRequirements
-		if strings.HasPrefix(diagnostic.Code, "ELEFANTE_PROVIDER") ||
-			strings.HasPrefix(diagnostic.Code, "ELEFANTE_NATIVE") {
-			code = model.ErrorProvider
-		}
-		commandError := model.NewError(
-			code,
-			"Project analysis found a blocking diagnostic.",
-		)
-		commandError.Detail = diagnostic.Message
-		commandError.Hint = diagnostic.Hint
-		commandError.Sources = append(
-			[]model.SourceReference(nil),
-			diagnostic.Sources...,
-		)
-		commandError.Provider = diagnostic.Provider
-
-		return commandError
-	}
-
-	return nil
 }
 
 func humanToken(value string) string {

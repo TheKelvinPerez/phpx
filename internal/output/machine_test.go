@@ -10,6 +10,7 @@ import (
 
 	"github.com/elefantephp/elefante/internal/model"
 	"github.com/elefantephp/elefante/internal/output"
+	"github.com/elefantephp/elefante/internal/security"
 )
 
 func TestMachineRendererSuccessSequence(t *testing.T) {
@@ -79,6 +80,35 @@ func TestMachineRendererDoesNotWriteMalformedPartialJSON(t *testing.T) {
 	if buffer.String() != expected {
 		t.Fatalf("expected failed encoding not to consume a sequence number\nexpected: %q\ngot:      %q", expected, buffer.String())
 	}
+}
+
+func TestMachineRendererRedactsEveryEventPayload(t *testing.T) {
+	t.Parallel()
+
+	const secret = "machine-output-secret"
+	var buffer bytes.Buffer
+	renderer := output.NewMachineRendererWithRedactor(
+		&buffer,
+		"plan",
+		security.NewRedactor(secret),
+	)
+
+	if err := renderer.Result(output.Result{
+		Payload: map[string]any{
+			"message":       "resolved " + secret,
+			"authorization": "Bearer " + secret,
+		},
+	}); err != nil {
+		t.Fatalf("render result: %v", err)
+	}
+
+	if strings.Contains(buffer.String(), secret) {
+		t.Fatalf("machine output leaked a secret: %s", buffer.String())
+	}
+	if !strings.Contains(buffer.String(), security.Redacted) {
+		t.Fatalf("expected a redaction marker, got %s", buffer.String())
+	}
+	assertValidJSONLines(t, buffer.String(), 1)
 }
 
 func TestMachineRendererEmitsDiagnosticAndPlanEvents(t *testing.T) {

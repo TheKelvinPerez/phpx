@@ -41,3 +41,9 @@ type Exit struct {
 type CompletedPayload struct {
 	Exit Exit `json:"exit"`
 }
+
+type ApprovalRequiredPayload struct {
+	PlanDigest string             `json:"plan_digest"`
+	Effects    []EffectClass      `json:"effects"`
+	Trust      []TrustRequirement `json:"trust,omitempty"`
+}

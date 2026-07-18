@@ -8,9 +8,9 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 7, Resolver, Plan Model, And Digest, complete
+Current phase: Phase 8, Native Provider Doctor And Plan, complete
 
-Next phase: Phase 8, Native Provider Doctor And Plan
+Next phase: Phase 9, DDEV Provider Doctor And Plan
 
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
@@ -248,10 +248,10 @@ Dependencies: Phase 7 completed
 
 Completion Criteria:
 
-* [ ] Native inspection reports PHP, extensions, Composer, and provenance.
-* [ ] Native planning never globally relinks or installs PHP.
-* [ ] Doctor performs no network access.
-* [ ] Human and machine output explain every provider decision.
+* [x] Native inspection reports PHP, extensions, Composer, and provenance.
+* [x] Native planning never globally relinks or installs PHP.
+* [x] Doctor performs no network access.
+* [x] Human and machine output explain every provider decision.
 
 ## Phase 9: DDEV Provider Doctor And Plan
 

@@ -39,3 +39,37 @@ func TestHumanRendererKeepsResultsAndErrorsOnSeparateStreams(t *testing.T) {
 		t.Fatalf("expected human error %q, got %q", expectedError, stderr.String())
 	}
 }
+
+func TestHumanRendererKeepsPlanAndDiagnosticsOnSeparateStreams(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	renderer := output.NewHumanRenderer(&stdout, &stderr)
+
+	if err := renderer.Diagnostic(output.Diagnostic{
+		Payload: model.Diagnostic{
+			Code:     "ELEFANTE_REQUIREMENT_INCOMPATIBLE",
+			Severity: model.SeverityError,
+			Message:  "The native PHP runtime is incompatible.",
+		},
+		Text: "Error [ELEFANTE_REQUIREMENT_INCOMPATIBLE]: The native PHP runtime is incompatible.",
+	}); err != nil {
+		t.Fatalf("render diagnostic: %v", err)
+	}
+	if err := renderer.Plan(output.Plan{
+		Payload: model.Plan{
+			SchemaVersion: model.PlanSchemaVersion,
+			Operation:     model.OperationSync,
+		},
+		Text: "Provider: native\nReason: only available",
+	}); err != nil {
+		t.Fatalf("render plan: %v", err)
+	}
+
+	if got, expected := stdout.String(), "Provider: native\nReason: only available\n"; got != expected {
+		t.Fatalf("expected human plan %q, got %q", expected, got)
+	}
+	expectedError := "Error [ELEFANTE_REQUIREMENT_INCOMPATIBLE]: The native PHP runtime is incompatible.\n"
+	if stderr.String() != expectedError {
+		t.Fatalf("expected human diagnostic %q, got %q", expectedError, stderr.String())
+	}
+}

@@ -5,7 +5,8 @@ const PlanSchemaVersion = "elefante.plan/v1"
 type Operation string
 
 const (
-	OperationSync Operation = "sync"
+	OperationDoctor Operation = "doctor"
+	OperationSync   Operation = "sync"
 )
 
 type PlanPolicy struct {
@@ -19,6 +20,7 @@ const (
 	CapabilityInspectRuntime    Capability = "inspect_runtime"
 	CapabilityInspectExtensions Capability = "inspect_extensions"
 	CapabilityInspectComposer   Capability = "inspect_composer"
+	CapabilityInspectPlatform   Capability = "inspect_platform"
 	CapabilityInstallRuntime    Capability = "install_runtime"
 	CapabilityInstallExtension  Capability = "install_extension"
 	CapabilityStartProvider     Capability = "start_provider"
@@ -28,6 +30,7 @@ const (
 type RuntimeObservation struct {
 	Name    string          `json:"name"`
 	Version string          `json:"version"`
+	SAPI    string          `json:"sapi,omitempty"`
 	Source  SourceReference `json:"source"`
 }
 
@@ -52,6 +55,8 @@ type ProviderObservation struct {
 	Provider     string                 `json:"provider"`
 	Available    bool                   `json:"available"`
 	Version      string                 `json:"version,omitempty"`
+	Platform     string                 `json:"platform,omitempty"`
+	Architecture string                 `json:"architecture,omitempty"`
 	Capabilities []Capability           `json:"capabilities,omitempty"`
 	Runtimes     []RuntimeObservation   `json:"runtimes,omitempty"`
 	Composer     []ComposerObservation  `json:"composer,omitempty"`

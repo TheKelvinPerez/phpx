@@ -87,7 +87,9 @@ func Build(request Request) (model.Plan, error) {
 			result.Inputs,
 		)
 	}
-	if observation != nil && !hasBlockingDiagnostic(diagnostics) {
+	if operation != model.OperationDoctor &&
+		observation != nil &&
+		!hasBlockingDiagnostic(diagnostics) {
 		actions := compatibleActions(result, *observation)
 		policyDiagnostics := actionPolicyDiagnostics(
 			result.Policy,

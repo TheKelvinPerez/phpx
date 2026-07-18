@@ -81,6 +81,68 @@ func TestMachineRendererDoesNotWriteMalformedPartialJSON(t *testing.T) {
 	}
 }
 
+func TestMachineRendererEmitsDiagnosticAndPlanEvents(t *testing.T) {
+	var buffer bytes.Buffer
+	renderer := output.NewMachineRenderer(&buffer, "plan")
+	diagnostic := model.Diagnostic{
+		Code:     "ELEFANTE_REQUIREMENT_INCOMPATIBLE",
+		Severity: model.SeverityError,
+		Message:  "The native PHP runtime is incompatible.",
+		Provider: "native",
+	}
+	builtPlan := model.Plan{
+		SchemaVersion: model.PlanSchemaVersion,
+		Operation:     model.OperationSync,
+		Requirements:  []model.RequirementResolution{},
+		Actions:       []model.PlanAction{},
+		Inputs:        []model.InputFingerprint{},
+		Policy:        model.PlanPolicy{},
+		Digest:        "sha256:plan",
+	}
+
+	if err := renderer.Started(); err != nil {
+		t.Fatalf("render started event: %v", err)
+	}
+	if err := renderer.Diagnostic(output.Diagnostic{
+		Payload: diagnostic,
+		Text:    diagnostic.Message,
+	}); err != nil {
+		t.Fatalf("render diagnostic event: %v", err)
+	}
+	if err := renderer.Plan(output.Plan{
+		Payload: builtPlan,
+		Text:    "Provider: native",
+	}); err != nil {
+		t.Fatalf("render plan event: %v", err)
+	}
+	if err := renderer.Completed(model.Exit{
+		Origin: model.ExitOriginElefante,
+		Code:   0,
+	}); err != nil {
+		t.Fatalf("render completed event: %v", err)
+	}
+
+	var events []struct {
+		Type    model.EventType `json:"type"`
+		Payload json.RawMessage `json:"payload"`
+	}
+	for _, line := range strings.Split(strings.TrimSpace(buffer.String()), "\n") {
+		var event struct {
+			Type    model.EventType `json:"type"`
+			Payload json.RawMessage `json:"payload"`
+		}
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Fatalf("decode event: %v", err)
+		}
+		events = append(events, event)
+	}
+	if len(events) != 4 ||
+		events[1].Type != model.EventDiagnostic ||
+		events[2].Type != model.EventPlan {
+		t.Fatalf("unexpected event sequence %#v", events)
+	}
+}
+
 func renderVersionSuccess(t *testing.T) string {
 	t.Helper()
 

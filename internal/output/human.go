@@ -31,6 +31,22 @@ func (renderer *HumanRenderer) Fact(fact Fact) error {
 	return nil
 }
 
+func (renderer *HumanRenderer) Diagnostic(diagnostic Diagnostic) error {
+	if _, err := fmt.Fprintln(renderer.stderr, diagnostic.Text); err != nil {
+		return fmt.Errorf("write human diagnostic: %w", err)
+	}
+
+	return nil
+}
+
+func (renderer *HumanRenderer) Plan(plan Plan) error {
+	if _, err := fmt.Fprintln(renderer.stdout, plan.Text); err != nil {
+		return fmt.Errorf("write human plan: %w", err)
+	}
+
+	return nil
+}
+
 func (renderer *HumanRenderer) Result(result Result) error {
 	if _, err := fmt.Fprintln(renderer.stdout, result.Text); err != nil {
 		return fmt.Errorf("write human result: %w", err)

@@ -1041,6 +1041,30 @@ func compatibleRequest() plan.Request {
 	}
 }
 
+func TestDoctorPlanExplainsSelectionWithoutMutationActions(t *testing.T) {
+	request := compatibleRequest()
+	request.Operation = model.OperationDoctor
+
+	result, err := plan.Build(request)
+	if err != nil {
+		t.Fatalf("build doctor plan: %v", err)
+	}
+
+	if result.Operation != model.OperationDoctor {
+		t.Fatalf("expected doctor operation, got %q", result.Operation)
+	}
+	if result.Provider.Name != "native" ||
+		result.Provider.Reason != "only_available" {
+		t.Fatalf("expected explained native selection, got %#v", result.Provider)
+	}
+	if len(result.Requirements) == 0 {
+		t.Fatal("expected doctor to resolve project requirements")
+	}
+	if len(result.Actions) != 0 {
+		t.Fatalf("doctor must remain action free, got %#v", result.Actions)
+	}
+}
+
 func actionByKind(
 	t *testing.T,
 	result model.Plan,

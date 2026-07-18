@@ -166,15 +166,20 @@ func TestCompiledBinaryJSONDoctorDiscoversProjectFromDescendant(t *testing.T) {
 	}
 
 	events := decodeCompiledEvents(t, first)
-	if len(events) != 3 {
-		t.Fatalf("expected started, fact, and completed events, got %d", len(events))
+	if len(events) < 5 {
+		t.Fatalf("expected doctor analysis events, got %d", len(events))
 	}
-	expectedTypes := []model.EventType{
-		model.EventStarted,
-		model.EventFact,
-		model.EventCompleted,
+	if events[0].Type != model.EventStarted {
+		t.Fatalf("expected started event first, got %q", events[0].Type)
 	}
-	for index, expectedType := range expectedTypes {
+	if events[len(events)-1].Type != model.EventCompleted {
+		t.Fatalf(
+			"expected completed event last, got %q",
+			events[len(events)-1].Type,
+		)
+	}
+	foundPlan := false
+	for index := range events {
 		if events[index].Schema != model.EventSchema {
 			t.Errorf("event %d has unexpected schema %q", index+1, events[index].Schema)
 		}
@@ -184,15 +189,15 @@ func TestCompiledBinaryJSONDoctorDiscoversProjectFromDescendant(t *testing.T) {
 		if events[index].Command != "doctor" {
 			t.Errorf("event %d has command %q", index+1, events[index].Command)
 		}
-		if events[index].Type != expectedType {
-			t.Errorf("event %d has type %q", index+1, events[index].Type)
+		if events[index].Type == model.EventPlan {
+			foundPlan = true
 		}
 	}
-
-	var facts model.ProjectFacts
-	if err := json.Unmarshal(events[1].Payload, &facts); err != nil {
-		t.Fatalf("decode doctor facts: %v", err)
+	if !foundPlan {
+		t.Fatal("expected doctor plan event")
 	}
+
+	facts := projectFactsFromEvents(t, events)
 	resolvedProjectRoot, err := filepath.EvalSymlinks(projectRoot)
 	if err != nil {
 		t.Fatalf("resolve project root: %v", err)
@@ -213,6 +218,145 @@ func TestCompiledBinaryJSONDoctorDiscoversProjectFromDescendant(t *testing.T) {
 	}
 	if len(facts.InputFingerprints) != 1 {
 		t.Fatalf("expected one discovery input fingerprint, got %#v", facts.InputFingerprints)
+	}
+}
+
+func TestCompiledBinaryNativeDoctorAndPlanInspectLocalExecutables(t *testing.T) {
+	if _, err := exec.LookPath("php"); err != nil {
+		t.Skip("local PHP executable is unavailable")
+	}
+	if _, err := exec.LookPath("composer"); err != nil {
+		t.Skip("local Composer executable is unavailable")
+	}
+
+	binary := buildBinary(t)
+	projectRoot := t.TempDir()
+	composerContent := `{
+    "name": "acme/native-proof",
+    "require": {
+        "php": ">=8.0",
+        "ext-json": "*"
+    }
+}
+`
+	if err := os.WriteFile(
+		filepath.Join(projectRoot, "composer.json"),
+		[]byte(composerContent),
+		0o644,
+	); err != nil {
+		t.Fatalf("write native Composer fixture: %v", err)
+	}
+
+	doctorOutput := runCompiledAnalysis(
+		t,
+		binary,
+		"--json",
+		"--project",
+		projectRoot,
+		"--provider",
+		"native",
+		"doctor",
+	)
+	doctorEvents := decodeCompiledEvents(t, doctorOutput)
+	observation := providerObservationFromEvents(t, doctorEvents, "native")
+	if len(observation.Runtimes) != 1 ||
+		observation.Runtimes[0].Name != "php" ||
+		observation.Runtimes[0].Version == "" ||
+		observation.Runtimes[0].SAPI == "" ||
+		observation.Runtimes[0].Source.Path == "" {
+		t.Fatalf("unexpected local PHP observation %#v", observation.Runtimes)
+	}
+	if len(observation.Composer) != 1 ||
+		observation.Composer[0].Version == "" ||
+		observation.Composer[0].Path == "" ||
+		observation.Composer[0].Identity == "" {
+		t.Fatalf("unexpected local Composer observation %#v", observation.Composer)
+	}
+	foundJSON := false
+	for _, extension := range observation.Extensions {
+		if extension.Name == "ext-json" && extension.Available {
+			foundJSON = true
+			if extension.Source.Path == "" {
+				t.Fatalf("expected extension provenance, got %#v", extension)
+			}
+		}
+	}
+	if !foundJSON {
+		t.Fatalf("expected local ext-json observation, got %#v", observation.Extensions)
+	}
+	doctorPlan := planFromEvents(t, doctorEvents)
+	if doctorPlan.Operation != model.OperationDoctor ||
+		doctorPlan.Provider.Name != "native" ||
+		doctorPlan.Provider.Reason != "explicit" ||
+		len(doctorPlan.Actions) != 0 {
+		t.Fatalf("unexpected native doctor plan %#v", doctorPlan)
+	}
+
+	planOutput := runCompiledAnalysis(
+		t,
+		binary,
+		"--json",
+		"--project",
+		projectRoot,
+		"--provider",
+		"native",
+		"plan",
+	)
+	syncPlan := planFromEvents(t, decodeCompiledEvents(t, planOutput))
+	if syncPlan.Operation != model.OperationSync ||
+		syncPlan.Provider.Name != "native" ||
+		!strings.HasPrefix(syncPlan.Digest, "sha256:") {
+		t.Fatalf("unexpected native synchronization plan %#v", syncPlan)
+	}
+	for _, action := range syncPlan.Actions {
+		if action.Kind == model.ActionPrepareRuntime ||
+			action.Kind == model.ActionPrepareExtension {
+			t.Fatalf(
+				"compatible native plan must not install or relink PHP: %#v",
+				action,
+			)
+		}
+	}
+
+	for _, commandName := range []string{"doctor", "plan"} {
+		stdout, stderr := runCompiledHumanAnalysis(
+			t,
+			binary,
+			"--project",
+			projectRoot,
+			"--provider",
+			"native",
+			commandName,
+		)
+		expectedOperation := commandName
+		if commandName == "plan" {
+			expectedOperation = "sync"
+		}
+		for _, expected := range []string{
+			"Project: ",
+			"Provider: native",
+			"Selection reason: explicit",
+			"PHP: ",
+			"Composer: ",
+			"Operation: " + expectedOperation,
+			"Plan digest: sha256:",
+		} {
+			if !strings.Contains(stdout, expected) {
+				t.Fatalf(
+					"expected compiled %s output to contain %q, got:\n%s",
+					commandName,
+					expected,
+					stdout,
+				)
+			}
+		}
+		if !strings.Contains(stderr, "ELEFANTE_COMPOSER_LOCK_MISSING") {
+			t.Fatalf(
+				"expected compiled %s warning, got:\n%s",
+				commandName,
+				stderr,
+			)
+		}
 	}
 }
 
@@ -498,7 +642,10 @@ func runCompiledDoctor(t *testing.T, binary string, projectPath string) string {
 	command.Stderr = &stderr
 
 	if err := command.Run(); err != nil {
-		t.Fatalf("run elefante doctor: %v\nstderr:\n%s", err, stderr.String())
+		var exitError *exec.ExitError
+		if !errors.As(err, &exitError) || exitError.ExitCode() != 4 {
+			t.Fatalf("run elefante doctor: %v\nstderr:\n%s", err, stderr.String())
+		}
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("expected doctor stderr to be empty, got:\n%s", stderr.String())
@@ -527,20 +674,148 @@ func runCompiledDoctorFromDirectory(t *testing.T, binary string, directory strin
 	return stdout.String()
 }
 
+func runCompiledAnalysis(
+	t *testing.T,
+	binary string,
+	arguments ...string,
+) string {
+	t.Helper()
+
+	command := exec.Command(binary, arguments...)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+
+	if err := command.Run(); err != nil {
+		t.Fatalf(
+			"run compiled analysis: %v\nstdout:\n%s\nstderr:\n%s",
+			err,
+			stdout.String(),
+			stderr.String(),
+		)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected analysis stderr to be empty, got:\n%s", stderr.String())
+	}
+
+	return stdout.String()
+}
+
+func runCompiledHumanAnalysis(
+	t *testing.T,
+	binary string,
+	arguments ...string,
+) (string, string) {
+	t.Helper()
+
+	command := exec.Command(binary, arguments...)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+
+	if err := command.Run(); err != nil {
+		t.Fatalf(
+			"run compiled human analysis: %v\nstdout:\n%s\nstderr:\n%s",
+			err,
+			stdout.String(),
+			stderr.String(),
+		)
+	}
+
+	return stdout.String(), stderr.String()
+}
+
 func decodeDoctorFacts(t *testing.T, content string) model.ProjectFacts {
 	t.Helper()
 
 	events := decodeCompiledEvents(t, content)
-	if len(events) != 3 || events[1].Type != model.EventFact {
-		t.Fatalf("expected doctor fact event, got %#v", events)
-	}
 
-	var facts model.ProjectFacts
-	if err := json.Unmarshal(events[1].Payload, &facts); err != nil {
-		t.Fatalf("decode doctor facts: %v", err)
-	}
+	return projectFactsFromEvents(t, events)
+}
 
-	return facts
+func projectFactsFromEvents(
+	t *testing.T,
+	events []compiledEvent,
+) model.ProjectFacts {
+	t.Helper()
+
+	for _, event := range events {
+		if event.Type != model.EventFact {
+			continue
+		}
+		var shape map[string]json.RawMessage
+		if err := json.Unmarshal(event.Payload, &shape); err != nil {
+			t.Fatalf("decode fact shape: %v", err)
+		}
+		if _, found := shape["identity"]; !found {
+			continue
+		}
+		if _, found := shape["composer"]; !found {
+			continue
+		}
+		var facts model.ProjectFacts
+		if err := json.Unmarshal(event.Payload, &facts); err != nil {
+			t.Fatalf("decode doctor facts: %v", err)
+		}
+
+		return facts
+	}
+	t.Fatalf("expected project facts event, got %#v", events)
+
+	return model.ProjectFacts{}
+}
+
+func providerObservationFromEvents(
+	t *testing.T,
+	events []compiledEvent,
+	name string,
+) model.ProviderObservation {
+	t.Helper()
+
+	for _, event := range events {
+		if event.Type != model.EventFact {
+			continue
+		}
+		var shape map[string]json.RawMessage
+		if err := json.Unmarshal(event.Payload, &shape); err != nil {
+			t.Fatalf("decode provider fact shape: %v", err)
+		}
+		if _, found := shape["provider"]; !found {
+			continue
+		}
+		var observation model.ProviderObservation
+		if err := json.Unmarshal(event.Payload, &observation); err != nil {
+			t.Fatalf("decode provider observation: %v", err)
+		}
+		if observation.Provider == name &&
+			observation.Fingerprint != "" {
+			return observation
+		}
+	}
+	t.Fatalf("expected provider observation %q, got %#v", name, events)
+
+	return model.ProviderObservation{}
+}
+
+func planFromEvents(t *testing.T, events []compiledEvent) model.Plan {
+	t.Helper()
+
+	for _, event := range events {
+		if event.Type != model.EventPlan {
+			continue
+		}
+		var builtPlan model.Plan
+		if err := json.Unmarshal(event.Payload, &builtPlan); err != nil {
+			t.Fatalf("decode plan event: %v", err)
+		}
+
+		return builtPlan
+	}
+	t.Fatalf("expected plan event, got %#v", events)
+
+	return model.Plan{}
 }
 
 func containsFramework(

@@ -31,6 +31,14 @@ func (renderer *MachineRenderer) Fact(fact Fact) error {
 	return renderer.emit(model.EventFact, fact.Payload)
 }
 
+func (renderer *MachineRenderer) Diagnostic(diagnostic Diagnostic) error {
+	return renderer.emit(model.EventDiagnostic, diagnostic.Payload)
+}
+
+func (renderer *MachineRenderer) Plan(plan Plan) error {
+	return renderer.emit(model.EventPlan, plan.Payload)
+}
+
 func (renderer *MachineRenderer) Result(result Result) error {
 	return renderer.emit(model.EventResult, result.Payload)
 }

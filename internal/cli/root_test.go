@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -64,6 +65,7 @@ func TestDoctorForwardsExplicitProjectAndConfigPaths(t *testing.T) {
 				},
 			}, nil
 		},
+		Providers: testProviders(),
 	})
 
 	_, _, _, err := executeCommand(
@@ -85,5 +87,156 @@ func TestDoctorForwardsExplicitProjectAndConfigPaths(t *testing.T) {
 	}
 	if received.ConfigPath != "/project/custom.toml" {
 		t.Fatalf("expected config path, got %#v", received)
+	}
+}
+
+func TestPlanRendersNativeDecisionAndForwardsReadOnlyPolicy(t *testing.T) {
+	var received discovery.Request
+	nativeProvider := &testProvider{
+		observation: model.ProviderObservation{
+			Provider:     "native",
+			Available:    true,
+			Platform:     "darwin",
+			Architecture: "arm64",
+			Capabilities: []model.Capability{
+				model.CapabilityExecuteCommand,
+				model.CapabilityInspectComposer,
+				model.CapabilityInspectRuntime,
+			},
+			Runtimes: []model.RuntimeObservation{
+				{
+					Name:    "php",
+					Version: "8.5.0",
+					SAPI:    "cli",
+					Source: model.SourceReference{
+						Path: "/fixture/bin/php",
+						Kind: "provider_executable",
+					},
+				},
+			},
+			Composer: []model.ComposerObservation{
+				{
+					Version:  "2.9.5",
+					Source:   "system",
+					Path:     "/fixture/bin/composer",
+					Identity: "sha256:composer",
+				},
+			},
+			Extensions:  []model.ExtensionObservation{},
+			Diagnostics: []model.Diagnostic{},
+			Fingerprint: "sha256:native",
+		},
+	}
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			_ context.Context,
+			request discovery.Request,
+		) (model.ProjectFacts, error) {
+			received = request
+
+			return cliCompatibleFacts(), nil
+		},
+		Providers: providerSet(nativeProvider),
+	})
+
+	_, stdout, stderr, err := executeCommand(
+		t,
+		context.Background(),
+		strings.NewReader(""),
+		cli.Dependencies{Application: application},
+		"--project",
+		"/workspace",
+		"--config",
+		"/workspace/elefante.toml",
+		"--provider",
+		"native",
+		"--offline",
+		"--frozen",
+		"plan",
+	)
+	var commandError *model.Error
+	if !errors.As(err, &commandError) ||
+		commandError.Code != model.ErrorRequirements {
+		t.Fatalf(
+			"expected offline requirements blocker, got %v\nstdout:\n%s\nstderr:\n%s",
+			err,
+			stdout,
+			stderr,
+		)
+	}
+	if received.StartPath != "/workspace" ||
+		received.ConfigPath != "/workspace/elefante.toml" {
+		t.Fatalf("unexpected discovery request %#v", received)
+	}
+	if len(nativeProvider.inspectRequests) != 1 ||
+		!nativeProvider.inspectRequests[0].Offline {
+		t.Fatalf(
+			"expected offline provider inspection, got %#v",
+			nativeProvider.inspectRequests,
+		)
+	}
+	for _, expected := range []string{
+		"Project: /workspace",
+		"Provider: native",
+		"Selection reason: explicit",
+		"PHP: 8.5.0, SAPI cli, /fixture/bin/php",
+		"Composer: 2.9.5, /fixture/bin/composer",
+		"Operation: sync",
+		"Plan digest: sha256:",
+		"Next command: elefante sync",
+	} {
+		if !strings.Contains(stdout, expected) {
+			t.Fatalf("expected plan output to contain %q, got:\n%s", expected, stdout)
+		}
+	}
+	if !strings.Contains(
+		stderr,
+		"ELEFANTE_OFFLINE_NETWORK_REQUIRED",
+	) {
+		t.Fatalf("expected offline diagnostic, got:\n%s", stderr)
+	}
+}
+
+func cliCompatibleFacts() model.ProjectFacts {
+	return model.ProjectFacts{
+		Identity: model.ProjectIdentity{
+			ComposerRoot:    "/workspace",
+			ApplicationRoot: "/workspace",
+			WorkspaceRoot:   "/workspace",
+			IdentityKey:     "sha256:project",
+		},
+		Composer: model.ComposerFacts{
+			Manifest: model.ComposerManifestFacts{
+				Path: "/workspace/composer.json",
+				Name: "acme/example",
+			},
+			Lock: model.ComposerLockFacts{
+				Path:   "/workspace/composer.lock",
+				Status: model.ComposerLockFresh,
+			},
+			PlatformRequirements: []model.Requirement{
+				{
+					Name:       "php",
+					Kind:       model.RequirementPHP,
+					Constraint: "^8.4",
+					Scope:      model.RequirementScopeRoot,
+					Sources: []model.SourceReference{
+						{
+							Path:  "/workspace/composer.json",
+							Kind:  "composer_manifest",
+							Field: "/require/php",
+						},
+					},
+				},
+			},
+		},
+		InputFingerprints: []model.InputFingerprint{
+			{
+				Path:   "/workspace/composer.json",
+				Kind:   "composer_manifest",
+				SHA256: "manifest",
+				Size:   128,
+			},
+		},
 	}
 }

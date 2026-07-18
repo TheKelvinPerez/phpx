@@ -11,6 +11,7 @@ import (
 
 	"github.com/elefantephp/elefante/internal/app"
 	"github.com/elefantephp/elefante/internal/cli"
+	"github.com/elefantephp/elefante/internal/discovery"
 	"github.com/elefantephp/elefante/internal/model"
 )
 
@@ -166,7 +167,9 @@ func TestJSONDoctorCommandNameSkipsConfigFlagValue(t *testing.T) {
 
 	exitCode := cli.Execute(
 		context.Background(),
-		cli.Dependencies{Application: app.New(app.Dependencies{})},
+		cli.Dependencies{Application: app.New(app.Dependencies{
+			Providers: testProviders(),
+		})},
 		cli.Execution{
 			Arguments: []string{
 				"--json",
@@ -192,6 +195,123 @@ func TestJSONDoctorCommandNameSkipsConfigFlagValue(t *testing.T) {
 	}
 	if event.Command != "doctor" {
 		t.Fatalf("expected doctor command name, got %q", event.Command)
+	}
+}
+
+func TestJSONDoctorExplainsNativeProviderSelection(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	nativeProvider := &testProvider{
+		observation: model.ProviderObservation{
+			Provider:     "native",
+			Available:    true,
+			Platform:     "darwin",
+			Architecture: "arm64",
+			Capabilities: []model.Capability{
+				model.CapabilityExecuteCommand,
+				model.CapabilityInspectComposer,
+				model.CapabilityInspectRuntime,
+			},
+			Runtimes: []model.RuntimeObservation{
+				{
+					Name:    "php",
+					Version: "8.5.0",
+					SAPI:    "cli",
+					Source: model.SourceReference{
+						Path: "/fixture/bin/php",
+						Kind: "provider_executable",
+					},
+				},
+			},
+			Composer: []model.ComposerObservation{
+				{
+					Version:  "2.9.5",
+					Source:   "system",
+					Path:     "/fixture/bin/composer",
+					Identity: "sha256:composer",
+				},
+			},
+			Extensions:  []model.ExtensionObservation{},
+			Diagnostics: []model.Diagnostic{},
+			Fingerprint: "sha256:native",
+		},
+	}
+	application := app.New(app.Dependencies{
+		DiscoverProject: func(
+			context.Context,
+			discovery.Request,
+		) (model.ProjectFacts, error) {
+			return cliCompatibleFacts(), nil
+		},
+		Providers: providerSet(nativeProvider),
+	})
+
+	exitCode := cli.Execute(
+		context.Background(),
+		cli.Dependencies{Application: application},
+		cli.Execution{
+			Arguments: []string{
+				"--json",
+				"--provider",
+				"native",
+				"doctor",
+			},
+			Input:  strings.NewReader(""),
+			Output: &stdout,
+			Error:  &stderr,
+		},
+	)
+	if exitCode != 0 {
+		t.Fatalf(
+			"expected doctor exit zero, got %d\n%s",
+			exitCode,
+			stdout.String(),
+		)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected JSON stderr to be empty, got:\n%s", stderr.String())
+	}
+
+	var events []struct {
+		Command string          `json:"command"`
+		Type    model.EventType `json:"type"`
+		Payload json.RawMessage `json:"payload"`
+	}
+	for _, line := range strings.Split(strings.TrimSpace(stdout.String()), "\n") {
+		var event struct {
+			Command string          `json:"command"`
+			Type    model.EventType `json:"type"`
+			Payload json.RawMessage `json:"payload"`
+		}
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Fatalf("decode doctor event: %v", err)
+		}
+		events = append(events, event)
+	}
+	expectedTypes := []model.EventType{
+		model.EventStarted,
+		model.EventFact,
+		model.EventFact,
+		model.EventPlan,
+		model.EventCompleted,
+	}
+	if len(events) != len(expectedTypes) {
+		t.Fatalf("unexpected doctor events %#v", events)
+	}
+	for index, expected := range expectedTypes {
+		if events[index].Command != "doctor" ||
+			events[index].Type != expected {
+			t.Fatalf("unexpected doctor event %d: %#v", index+1, events[index])
+		}
+	}
+	var builtPlan model.Plan
+	if err := json.Unmarshal(events[3].Payload, &builtPlan); err != nil {
+		t.Fatalf("decode doctor plan: %v", err)
+	}
+	if builtPlan.Provider.Name != "native" ||
+		builtPlan.Provider.Reason != "explicit" ||
+		builtPlan.Operation != model.OperationDoctor {
+		t.Fatalf("unexpected doctor plan %#v", builtPlan)
 	}
 }
 

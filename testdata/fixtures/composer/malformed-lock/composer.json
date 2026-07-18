@@ -1,0 +1,6 @@
+{
+    "name": "acme/malformed-lock",
+    "require": {
+        "php": "^8.4"
+    }
+}

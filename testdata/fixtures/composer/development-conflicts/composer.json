@@ -1,0 +1,11 @@
+{
+    "name": "acme/example",
+    "require-dev": {
+        "ext-xdebug": "^3.3",
+        "phpunit/phpunit": "^12.0"
+    },
+    "conflict": {
+        "php": "<8.3",
+        "ext-mysql": "*"
+    }
+}

@@ -8,9 +8,9 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 3, Project And Workspace Discovery, complete
+Current phase: Phase 4, Composer Metadata Parsing, complete
 
-Next phase: Phase 4, Composer Metadata Parsing
+Next phase: Phase 5, Composer Platform Constraint Engine
 
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
@@ -136,10 +136,10 @@ Dependencies: Phase 3 completed
 
 Completion Criteria:
 
-* [ ] Composer facts include root and locked platform requirements.
-* [ ] Platform emulation is represented separately from actual runtime facts.
-* [ ] Plugins and scripts are discoverable before execution.
-* [ ] Parser failures never panic or leak sensitive content.
+* [x] Composer facts include root and locked platform requirements.
+* [x] Platform emulation is represented separately from actual runtime facts.
+* [x] Plugins and scripts are discoverable before execution.
+* [x] Parser failures never panic or leak sensitive content.
 
 ## Phase 5: Composer Platform Constraint Engine
 

@@ -1,0 +1,12 @@
+{
+    "name": "acme/example",
+    "require": {
+        "PHP": "^8.3 || ^8.4",
+        "PHP-64BIT": "*",
+        "EXT-Intl": "*",
+        "lib-icu": ">=73",
+        "Composer": "^2.7",
+        "composer-runtime-api": "^2.2",
+        "laravel/framework": "^12.0"
+    }
+}

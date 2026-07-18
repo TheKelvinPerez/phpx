@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/elefantephp/elefante/internal/composer"
 	"github.com/elefantephp/elefante/internal/model"
 	projectpaths "github.com/elefantephp/elefante/internal/paths"
 )
@@ -83,11 +84,39 @@ func Discover(ctx context.Context, request Request) (model.ProjectFacts, error) 
 	if git != nil {
 		metadataBoundary = identity.WorkspaceRoot
 	}
-	composerFingerprint, err := readComposerMetadata(
+	manifestMetadata, err := readComposerMetadata(
 		identity.ComposerRoot,
 		metadataBoundary,
 		request.MaxMetadataSize,
 	)
+	if err != nil {
+		return model.ProjectFacts{}, err
+	}
+	lockMetadata, err := readComposerLock(
+		identity.ComposerRoot,
+		metadataBoundary,
+		request.MaxMetadataSize,
+	)
+	if err != nil {
+		return model.ProjectFacts{}, err
+	}
+
+	composerInput := composer.ProjectInput{
+		Manifest: composer.Document{
+			Path:    manifestMetadata.fingerprint.Path,
+			Content: manifestMetadata.content,
+		},
+	}
+	inputFingerprints := []model.InputFingerprint{manifestMetadata.fingerprint}
+	if lockMetadata != nil {
+		composerInput.Lock = &composer.Document{
+			Path:    lockMetadata.fingerprint.Path,
+			Content: lockMetadata.content,
+		}
+		inputFingerprints = append(inputFingerprints, lockMetadata.fingerprint)
+	}
+
+	composerResult, err := composer.ParseProject(composerInput)
 	if err != nil {
 		return model.ProjectFacts{}, err
 	}
@@ -99,7 +128,9 @@ func Discover(ctx context.Context, request Request) (model.ProjectFacts, error) 
 			Resolved: start.Resolved,
 		},
 		Identity:          identity,
-		InputFingerprints: []model.InputFingerprint{composerFingerprint},
+		Composer:          composerResult.Facts,
+		Diagnostics:       composerResult.Diagnostics,
+		InputFingerprints: inputFingerprints,
 	}, nil
 }
 

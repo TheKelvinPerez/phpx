@@ -1,0 +1,15 @@
+{
+    "name": "acme/locked-platform",
+    "require": {
+        "php": "^8.4",
+        "ext-intl": "*"
+    },
+    "require-dev": {
+        "ext-xdebug": "^3.4"
+    },
+    "config": {
+        "platform": {
+            "php": "8.4.10"
+        }
+    }
+}

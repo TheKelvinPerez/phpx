@@ -1,0 +1,164 @@
+{
+  "root_requirement": {
+    "name": "acme/runtime",
+    "constraint": "^1.0",
+    "source": {
+      "path": "/workspace/composer.json",
+      "kind": "composer_manifest",
+      "field": "/require/acme~1runtime"
+    }
+  },
+  "development_requirement": {
+    "name": "acme/dev-tool",
+    "constraint": "^1.0",
+    "source": {
+      "path": "/workspace/composer.json",
+      "kind": "composer_manifest",
+      "field": "/require-dev/acme~1dev-tool"
+    }
+  },
+  "runtime_package": {
+    "name": "acme/runtime",
+    "version": "1.4.0",
+    "type": "library",
+    "development": false,
+    "requirements": [
+      {
+        "name": "acme/plugin",
+        "constraint": "^2.0",
+        "source": {
+          "path": "/workspace/composer.lock",
+          "kind": "composer_lock",
+          "field": "/packages/1/require/acme~1plugin"
+        }
+      },
+      {
+        "name": "ext-json",
+        "constraint": "*",
+        "source": {
+          "path": "/workspace/composer.lock",
+          "kind": "composer_lock",
+          "field": "/packages/1/require/ext-json"
+        }
+      }
+    ],
+    "conflicts": [
+      {
+        "name": "php",
+        "constraint": "\u003c8.4",
+        "source": {
+          "path": "/workspace/composer.lock",
+          "kind": "composer_lock",
+          "field": "/packages/1/conflict/php"
+        }
+      }
+    ],
+    "source": {
+      "path": "/workspace/composer.lock",
+      "kind": "composer_lock",
+      "field": "/packages/1"
+    }
+  },
+  "plugin": {
+    "name": "acme/plugin",
+    "version": "2.1.0",
+    "development": false,
+    "source": {
+      "path": "/workspace/composer.lock",
+      "kind": "composer_lock",
+      "field": "/packages/0"
+    }
+  },
+  "platform_requirements": [
+    {
+      "name": "composer-plugin-api",
+      "kind": "composer_plugin_api",
+      "constraint": "^2.6",
+      "scope": "locked_package",
+      "package": "acme/plugin",
+      "optional": false,
+      "sources": [
+        {
+          "path": "/workspace/composer.lock",
+          "kind": "composer_lock",
+          "field": "/packages/0/require/composer-plugin-api"
+        }
+      ]
+    },
+    {
+      "name": "php",
+      "kind": "php",
+      "constraint": "^8.3",
+      "scope": "locked_package",
+      "package": "acme/plugin",
+      "optional": false,
+      "sources": [
+        {
+          "path": "/workspace/composer.lock",
+          "kind": "composer_lock",
+          "field": "/packages/0/require/php"
+        }
+      ]
+    },
+    {
+      "name": "ext-json",
+      "kind": "extension",
+      "constraint": "*",
+      "scope": "locked_package",
+      "package": "acme/runtime",
+      "optional": false,
+      "sources": [
+        {
+          "path": "/workspace/composer.lock",
+          "kind": "composer_lock",
+          "field": "/packages/1/require/ext-json"
+        }
+      ]
+    },
+    {
+      "name": "php",
+      "kind": "php",
+      "constraint": "\u003c8.4",
+      "scope": "locked_package_conflict",
+      "package": "acme/runtime",
+      "optional": false,
+      "sources": [
+        {
+          "path": "/workspace/composer.lock",
+          "kind": "composer_lock",
+          "field": "/packages/1/conflict/php"
+        }
+      ]
+    },
+    {
+      "name": "composer-runtime-api",
+      "kind": "composer_runtime_api",
+      "constraint": "^2.2",
+      "scope": "locked_development_package",
+      "package": "acme/dev-tool",
+      "optional": false,
+      "sources": [
+        {
+          "path": "/workspace/composer.lock",
+          "kind": "composer_lock",
+          "field": "/packages-dev/0/require/composer-runtime-api"
+        }
+      ]
+    },
+    {
+      "name": "ext-xdebug",
+      "kind": "extension",
+      "constraint": "^3.4",
+      "scope": "locked_development_package",
+      "package": "acme/dev-tool",
+      "optional": false,
+      "sources": [
+        {
+          "path": "/workspace/composer.lock",
+          "kind": "composer_lock",
+          "field": "/packages-dev/0/require/ext-xdebug"
+        }
+      ]
+    }
+  ]
+}

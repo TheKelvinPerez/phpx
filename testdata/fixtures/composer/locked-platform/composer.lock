@@ -1,0 +1,24 @@
+{
+    "_readme": [
+        "Fixture generated from Composer lock semantics."
+    ],
+    "content-hash": "8c785f5fae6d3a41bcb172e2b2bcd347",
+    "packages": [],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": "^8.4",
+        "ext-intl": "*"
+    },
+    "platform-dev": {
+        "ext-xdebug": "^3.4"
+    },
+    "platform-overrides": {
+        "php": "8.4.10"
+    },
+    "plugin-api-version": "2.6.0"
+}

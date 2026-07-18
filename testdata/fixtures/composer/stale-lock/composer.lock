@@ -1,0 +1,10 @@
+{
+    "content-hash": "00000000000000000000000000000000",
+    "packages": [],
+    "packages-dev": [],
+    "platform": {
+        "php": "^8.3"
+    },
+    "platform-dev": {},
+    "plugin-api-version": "2.6.0"
+}

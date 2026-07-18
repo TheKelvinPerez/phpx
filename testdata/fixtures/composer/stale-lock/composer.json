@@ -1,0 +1,6 @@
+{
+    "name": "acme/stale-lock",
+    "require": {
+        "php": "^8.4"
+    }
+}

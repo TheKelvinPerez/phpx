@@ -1,0 +1,18 @@
+{
+  "status": "invalid",
+  "diagnostics": [
+    {
+      "code": "ELEFANTE_COMPOSER_LOCK_MALFORMED",
+      "severity": "error",
+      "message": "The Composer lock file is malformed.",
+      "hint": "Regenerate composer.lock with composer update.",
+      "sources": [
+        {
+          "path": "/workspace/composer.lock",
+          "kind": "composer_lock"
+        }
+      ],
+      "retryable": false
+    }
+  ]
+}

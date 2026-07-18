@@ -216,6 +216,63 @@ func TestCompiledBinaryJSONDoctorDiscoversProjectFromDescendant(t *testing.T) {
 	}
 }
 
+func TestCompiledBinaryJSONDoctorEmitsComposerLockFacts(t *testing.T) {
+	binary := buildBinary(t)
+	projectRoot := t.TempDir()
+	copyComposerFixture(t, projectRoot, "locked-platform", "composer.json")
+	copyComposerFixture(t, projectRoot, "locked-platform", "composer.lock")
+
+	first := runCompiledDoctor(t, binary, projectRoot)
+	second := runCompiledDoctor(t, binary, projectRoot)
+	if first != second {
+		t.Fatalf(
+			"expected deterministic Composer facts\nfirst:\n%s\nsecond:\n%s",
+			first,
+			second,
+		)
+	}
+
+	facts := decodeDoctorFacts(t, first)
+	if facts.Composer.Manifest.Name != "acme/locked-platform" {
+		t.Errorf(
+			"expected Composer package acme/locked-platform, got %q",
+			facts.Composer.Manifest.Name,
+		)
+	}
+	if facts.Composer.Lock.Status != model.ComposerLockFresh {
+		t.Errorf("expected fresh Composer lock, got %q", facts.Composer.Lock.Status)
+	}
+	if facts.Composer.Lock.ContentHash == "" ||
+		facts.Composer.Lock.ContentHash != facts.Composer.Lock.ExpectedContentHash {
+		t.Errorf("expected matching Composer content hashes, got %#v", facts.Composer.Lock)
+	}
+	if len(facts.Composer.PlatformRequirements) != 6 {
+		t.Errorf(
+			"expected six root and locked platform requirements, got %#v",
+			facts.Composer.PlatformRequirements,
+		)
+	}
+	if len(facts.Composer.PlatformEmulation) != 2 {
+		t.Errorf(
+			"expected manifest and lock platform emulation facts, got %#v",
+			facts.Composer.PlatformEmulation,
+		)
+	}
+	if len(facts.Diagnostics) != 0 {
+		t.Errorf("expected no Composer diagnostics, got %#v", facts.Diagnostics)
+	}
+	if len(facts.InputFingerprints) != 2 {
+		t.Fatalf(
+			"expected manifest and lock fingerprints, got %#v",
+			facts.InputFingerprints,
+		)
+	}
+	if facts.InputFingerprints[0].Kind != "composer_manifest" ||
+		facts.InputFingerprints[1].Kind != "composer_lock" {
+		t.Errorf("unexpected input fingerprints %#v", facts.InputFingerprints)
+	}
+}
+
 func TestCompiledBinaryJSONDoctorDiscoversGitRepositoryFromCurrentDirectory(t *testing.T) {
 	binary := buildBinary(t)
 	projectRoot := t.TempDir()
@@ -477,6 +534,32 @@ func readEventGolden(t *testing.T, name string) string {
 	}
 
 	return string(content)
+}
+
+func copyComposerFixture(
+	t *testing.T,
+	projectRoot string,
+	fixture string,
+	name string,
+) {
+	t.Helper()
+
+	source := filepath.Join(
+		repositoryRoot(t),
+		"testdata",
+		"fixtures",
+		"composer",
+		fixture,
+		name,
+	)
+	content, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read Composer fixture %s: %v", source, err)
+	}
+	target := filepath.Join(projectRoot, name)
+	if err := os.WriteFile(target, content, 0o644); err != nil {
+		t.Fatalf("write Composer fixture %s: %v", target, err)
+	}
 }
 
 func repositoryRoot(t *testing.T) string {

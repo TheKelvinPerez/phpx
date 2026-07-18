@@ -1,0 +1,9 @@
+{
+    "name": "acme/with-packages",
+    "require": {
+        "acme/runtime": "^1.0"
+    },
+    "require-dev": {
+        "acme/dev-tool": "^1.0"
+    }
+}

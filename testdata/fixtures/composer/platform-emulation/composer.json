@@ -1,0 +1,10 @@
+{
+    "name": "acme/example",
+    "config": {
+        "platform": {
+            "PHP": "8.3.12",
+            "EXT-Redis": false,
+            "lib-curl": "8.1.0"
+        }
+    }
+}

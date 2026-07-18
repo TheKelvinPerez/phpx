@@ -374,6 +374,45 @@ func TestDiscoverRejectsComposerSymlinkOutsideProjectBoundary(t *testing.T) {
 	}
 }
 
+func TestDiscoverRejectsComposerLockSymlinkOutsideProjectBoundary(t *testing.T) {
+	projectRoot := t.TempDir()
+	writeFile(t, filepath.Join(projectRoot, "composer.json"), "{}\n")
+
+	outsideRoot := t.TempDir()
+	outsideLock := filepath.Join(outsideRoot, "composer.lock")
+	writeFile(
+		t,
+		outsideLock,
+		`{"content-hash":"99914b932bd37a50b983c5e7c90ae93b","packages":[]}`,
+	)
+	lockPath := filepath.Join(projectRoot, "composer.lock")
+	if err := os.Symlink(outsideLock, lockPath); err != nil {
+		t.Fatalf("create Composer lock symlink: %v", err)
+	}
+
+	_, err := discovery.Discover(context.Background(), discovery.Request{
+		StartPath: projectRoot,
+	})
+
+	var commandError *model.Error
+	if !errors.As(err, &commandError) {
+		t.Fatalf("expected typed discovery error, got %v", err)
+	}
+	if !strings.Contains(commandError.Message, "outside the project boundary") {
+		t.Errorf("expected boundary message, got %q", commandError.Message)
+	}
+	resolvedProjectRoot, resolveErr := filepath.EvalSymlinks(projectRoot)
+	if resolveErr != nil {
+		t.Fatalf("resolve project root: %v", resolveErr)
+	}
+	expectedLockPath := filepath.Join(resolvedProjectRoot, "composer.lock")
+	if len(commandError.Sources) != 1 ||
+		commandError.Sources[0].Kind != "composer_lock" ||
+		commandError.Sources[0].Path != expectedLockPath {
+		t.Errorf("expected Composer lock source, got %#v", commandError.Sources)
+	}
+}
+
 func TestDiscoverFingerprintsComposerInput(t *testing.T) {
 	projectRoot := t.TempDir()
 	content := "{\"name\":\"acme/example\"}\n"
@@ -518,12 +557,73 @@ func TestDiscoverStopsWhenContextIsCanceled(t *testing.T) {
 	}
 }
 
+func TestDiscoverParsesComposerAndLockFacts(t *testing.T) {
+	projectRoot := t.TempDir()
+	writeFile(
+		t,
+		filepath.Join(projectRoot, "composer.json"),
+		string(readComposerFixture(t, "locked-platform", "composer.json")),
+	)
+	writeFile(
+		t,
+		filepath.Join(projectRoot, "composer.lock"),
+		string(readComposerFixture(t, "locked-platform", "composer.lock")),
+	)
+
+	facts, err := discovery.Discover(context.Background(), discovery.Request{
+		StartPath: projectRoot,
+	})
+	if err != nil {
+		t.Fatalf("discover project: %v", err)
+	}
+
+	if facts.Composer.Manifest.Name != "acme/locked-platform" {
+		t.Errorf("unexpected Composer package name %q", facts.Composer.Manifest.Name)
+	}
+	if facts.Composer.Lock.Status != model.ComposerLockFresh {
+		t.Errorf("expected fresh Composer lock, got %q", facts.Composer.Lock.Status)
+	}
+	if len(facts.Composer.PlatformRequirements) != 6 {
+		t.Errorf(
+			"expected root and locked platform requirements, got %#v",
+			facts.Composer.PlatformRequirements,
+		)
+	}
+	if len(facts.Diagnostics) != 0 {
+		t.Errorf("expected no Composer diagnostics, got %#v", facts.Diagnostics)
+	}
+	if len(facts.InputFingerprints) != 2 {
+		t.Fatalf("expected manifest and lock fingerprints, got %#v", facts.InputFingerprints)
+	}
+	if facts.InputFingerprints[0].Kind != "composer_manifest" {
+		t.Errorf("unexpected first fingerprint kind %q", facts.InputFingerprints[0].Kind)
+	}
+	if facts.InputFingerprints[1].Kind != "composer_lock" {
+		t.Errorf("unexpected second fingerprint kind %q", facts.InputFingerprints[1].Kind)
+	}
+}
+
 func writeFile(t *testing.T, path string, content string) {
 	t.Helper()
 
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)
 	}
+}
+
+func readComposerFixture(t *testing.T, parts ...string) []byte {
+	t.Helper()
+
+	pathParts := append(
+		[]string{"..", "..", "testdata", "fixtures", "composer"},
+		parts...,
+	)
+	content, err := os.ReadFile(filepath.Join(pathParts...))
+	if err != nil {
+		t.Fatalf("read Composer fixture: %v", err)
+	}
+
+	return content
 }
 
 func quotedPHPString(value string) string {

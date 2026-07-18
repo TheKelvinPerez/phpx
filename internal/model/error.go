@@ -38,9 +38,10 @@ const (
 )
 
 type SourceReference struct {
-	Path string `json:"path"`
-	Kind string `json:"kind,omitempty"`
-	Line int    `json:"line,omitempty"`
+	Path  string `json:"path"`
+	Kind  string `json:"kind,omitempty"`
+	Field string `json:"field,omitempty"`
+	Line  int    `json:"line,omitempty"`
 }
 
 type ErrorDetail struct {

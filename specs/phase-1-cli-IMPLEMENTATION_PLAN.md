@@ -8,9 +8,9 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 6, Framework Detection And Configuration, complete
+Current phase: Phase 7, Resolver, Plan Model, And Digest, complete
 
-Next phase: Phase 7, Resolver, Plan Model, And Digest
+Next phase: Phase 8, Native Provider Doctor And Plan
 
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
@@ -220,10 +220,10 @@ Dependencies: Phase 6 completed
 
 Completion Criteria:
 
-* [ ] Plan construction performs no I/O or mutation.
-* [ ] Equivalent facts and policy produce the same plan and digest.
-* [ ] Relevant input changes alter the digest.
-* [ ] Display wording does not alter the digest.
+* [x] Plan construction performs no I/O or mutation.
+* [x] Equivalent facts and policy produce the same plan and digest.
+* [x] Relevant input changes alter the digest.
+* [x] Display wording does not alter the digest.
 
 ## Phase 8: Native Provider Doctor And Plan
 

@@ -24,6 +24,8 @@ const (
 	RequirementScopeLockedPackageConflict            RequirementScope = "locked_package_conflict"
 	RequirementScopeLockedDevelopmentPackage         RequirementScope = "locked_development_package"
 	RequirementScopeLockedDevelopmentPackageConflict RequirementScope = "locked_development_package_conflict"
+	RequirementScopeVersionFile                      RequirementScope = "version_file"
+	RequirementScopeConfiguration                    RequirementScope = "configuration"
 )
 
 type Requirement struct {

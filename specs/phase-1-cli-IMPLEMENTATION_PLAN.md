@@ -8,9 +8,9 @@ Source specification: `specs/phase-1-cli-technical-design.md`
 
 Execution model: Test first, one behavior per red, green, refactor cycle
 
-Current phase: Phase 4, Composer Metadata Parsing, complete
+Current phase: Phase 5, Composer Platform Constraint Engine, complete
 
-Next phase: Phase 5, Composer Platform Constraint Engine
+Next phase: Phase 6, Framework Detection And Configuration
 
 Every phase must finish with a green focused suite, green repository suite, a clean diff review, and one intentional commit before the next phase begins.
 
@@ -164,10 +164,10 @@ Dependencies: Phase 4 completed
 
 Completion Criteria:
 
-* [ ] Supported constraint cases match the official oracle corpus.
-* [ ] Unsupported syntax blocks instead of approximating.
-* [ ] The engine evaluates PHP and all declared platform package kinds.
-* [ ] No package dependency solver behavior exists in Go.
+* [x] Supported constraint cases match the official oracle corpus.
+* [x] Unsupported syntax blocks instead of approximating.
+* [x] The engine evaluates PHP and all declared platform package kinds.
+* [x] No package dependency solver behavior exists in Go.
 
 ## Phase 6: Framework Detection And Configuration
 
